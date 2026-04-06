@@ -1,5 +1,5 @@
 # Obsidian Second Mind — Current Status
-> Last updated: 2026-04-05
+> Last updated: 2026-04-06
 
 ## Version / Build Status
 - Version: 0.1.0
@@ -31,15 +31,13 @@
 - [x] README.md, MIT License, .gitignore, pyproject.toml
 
 ## Known Issues / Blockers
-- Duplicate projects in .gemini/scratch: botseller_saas, social-leads-parser (need cleanup)
 - After CLI re-index, MCP server needs `rebuild_index` (not just CLI `index`)
 
 ## What's Next
-1. Clean up duplicate projects
-2. Register project in portfolio (nzt108.dev)
-3. Create Notion Documentation Hub
-4. GitHub Actions CI
-5. Add detailed architecture notes for key projects
+1. Register project in portfolio (nzt108.dev)
+2. Create Notion Documentation Hub
+3. GitHub Actions CI
+4. Add detailed architecture notes for key projects
 
 ## Key Files
 - `src/obsidian_bridge/mcp_server.py` — MCP server entry

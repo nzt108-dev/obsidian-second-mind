@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Control — nzt108.dev</title>
+    <meta name="description" content="Центр управления проектами — все проекты, стеки, сервисы в одном месте">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Ambient background -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow--1"></div>
+    <div class="bg-glow bg-glow--2"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header__left">
+            <div class="header__logo">
+                <span class="header__logo-icon">◈</span>
+                <h1 class="header__title">Mission Control</h1>
+            </div>
+            <span class="header__subtitle">nzt108.dev • Центр управления проектами</span>
+        </div>
+        <div class="header__right">
+            <div class="header__time" id="headerTime"></div>
+        </div>
+    </header>
+
+    <!-- Stats Bar -->
+    <section class="stats-bar" id="statsBar">
+        <div class="stat-card">
+            <span class="stat-card__value" id="statTotal">—</span>
+            <span class="stat-card__label">Проектов</span>
+        </div>
+        <div class="stat-card stat-card--active">
+            <span class="stat-card__value" id="statActive">—</span>
+            <span class="stat-card__label">Активных</span>
+        </div>
+        <div class="stat-card stat-card--paused">
+            <span class="stat-card__value" id="statPaused">—</span>
+            <span class="stat-card__label">На паузе</span>
+        </div>
+        <div class="stat-card stat-card--done">
+            <span class="stat-card__value" id="statDone">—</span>
+            <span class="stat-card__label">Готово</span>
+        </div>
+        <div class="stat-card stat-card--idea">
+            <span class="stat-card__value" id="statIdea">—</span>
+            <span class="stat-card__label">Идеи</span>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters">
+        <div class="filters__search">
+            <svg class="filters__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="searchInput" class="filters__search-input" placeholder="Поиск проекта...">
+        </div>
+        <div class="filters__tags" id="filterTags">
+            <button class="filter-btn filter-btn--active" data-filter="all">Все</button>
+            <button class="filter-btn" data-filter="active">🟢 Active</button>
+            <button class="filter-btn" data-filter="paused">🟡 Paused</button>
+            <button class="filter-btn" data-filter="done">✅ Done</button>
+            <button class="filter-btn" data-filter="idea">💡 Idea</button>
+        </div>
+        <div class="filters__stack" id="filterStack">
+            <!-- Populated dynamically -->
+        </div>
+    </section>
+
+    <!-- Projects Grid -->
+    <main class="projects-grid" id="projectsGrid">
+        <!-- Populated by JS -->
+        <div class="loading">
+            <div class="loading__spinner"></div>
+            <span>Загрузка данных с базы...</span>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <span>Obsidian Second Mind • Mission Control Dashboard</span>
+        <span id="footerCount"></span>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

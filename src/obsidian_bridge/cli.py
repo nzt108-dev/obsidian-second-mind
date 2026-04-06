@@ -209,5 +209,17 @@ def status(ctx):
     ))
 
 
+@cli.command()
+@click.option("--port", "-p", default=9109, help="Server port (default: 9109)")
+@click.option("--no-open", is_flag=True, help="Don't auto-open browser")
+@click.pass_context
+def dashboard(ctx, port, no_open):
+    """🚀 Launch Mission Control Dashboard in browser."""
+    console.print("[bold cyan]🚀 Launching Mission Control Dashboard...[/]")
+
+    from obsidian_bridge.dashboard_server import run_dashboard
+    run_dashboard(port=port, open_browser=not no_open)
+
+
 if __name__ == "__main__":
     cli()
