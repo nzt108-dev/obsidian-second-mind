@@ -61,11 +61,8 @@
    - **sendler-bot** — PRD (Codex Swarm multi-agent)
    - **yt-saas-frontend** — PRD (Next.js admin dashboard)
 4. Total: 28 notes → 116 chunks indexed
-5. Migrated 11 projects from `.gemini/antigravity/scratch` to `/Users/nzt108/Projects`:
-   - Astro-psiholog, Faithly, architect-portfolio, botseller_tg
-   - content-fabric-saas, dance-studio-website, my-remote-office
-   - norcal_deals, youtube-parser, zillow-landing, zillow-parser
-6. Updated MASTER.md paths (architect-portfolio → /Users/nzt108/Projects/)
+5. Migrated 11 projects from `.gemini/antigravity/scratch` to `/Users/nzt108/Projects`
+6. Updated MASTER.md paths
 7. Rebuilt search index via `rebuild_index` MCP tool
 8. Verified semantic search works for all new projects
 
@@ -80,8 +77,43 @@
 - `/Users/nzt108/.gemini/antigravity/shared/MASTER.md` — path updates
 
 ### Next Session — What To Do First
-1. Handle duplicate projects (botseller_saas, social-leads-parser in both .gemini and Projects)
+1. Handle duplicate projects
 2. Register obsidian-second-mind in portfolio
 3. Create Notion Documentation Hub
-4. GitHub Actions CI
-5. Add more detailed architecture notes for key projects
+
+---
+
+## Session 2026-04-06 — Mission Control Dashboard Integration
+
+### What Was Done
+1. Integrated Mission Control Dashboard into portfolio admin (`nzt108.dev/admin/workspaces`)
+2. Extended DB schema (Prisma) with new fields: status, stack, services, deployUrl, backendUrl, lastCommit*
+3. Created `/api/admin/workspaces` API route with full Mission Control data
+4. Updated `/api/agent/projects` to accept new fields
+5. Built full Mission Control UI in `app/admin/workspaces/page.tsx`:
+   - Stats bar (total, active, paused, done, idea)
+   - Filters by status + stack + search
+   - Dark-themed cards with glassmorphism, neo-accent, animations
+   - Stack badges, service icons, git info, deploy URLs
+   - Open in IDE + GitHub buttons
+6. Synced all 25 projects to portfolio DB with correct status, stack, services
+7. Updated `/push` workflow — added auto-sync step to update lastCommit data in portfolio after each push
+8. Created `.agent/workflows/push.md` for obsidian-second-mind and architect-portfolio
+9. User verified dashboard in browser — all projects displaying correctly
+
+### What Failed / Issues
+- Browser tool couldn't open pages (out of agent control) — user verified manually
+
+### Git Commits
+- `4ff5508` — feat: Mission Control Dashboard — workspace admin with status, stack, services, git info (architect-portfolio)
+- TBD — chore: add push workflow with Mission Control sync (obsidian-second-mind)
+
+### Files Changed
+- `.agent/workflows/push.md` — new push workflow with Mission Control sync
+- `docs/SESSION_LOG.md` — updated
+- `docs/CURRENT_STATUS.md` — updated
+
+### Next Session — What To Do First
+1. Create Notion Documentation Hub for obsidian-second-mind
+2. GitHub Actions CI
+3. Add detailed architecture notes for key projects

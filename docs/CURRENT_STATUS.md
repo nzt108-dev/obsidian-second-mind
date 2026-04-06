@@ -22,7 +22,6 @@
 - [x] Global notes (3): coding-standards, tech-stack, design-principles
 - [x] Templates (2): project-prd, architecture-decision
 - [x] **16 projects documented** (28 notes, 116 chunks)
-- [x] Projects: faithly, nzt108-dev, ai-content-fabric, botseller, social-leads-parser, brieftube, youtube-parser, zillow-parser, norcal-deals, dance-studio-website, content-fabric-saas, astro-psiholog, my-remote-office, zillow-landing, sendler-bot, yt-saas-frontend
 
 ### Infrastructure
 - [x] Projects migrated from .gemini/scratch → /Users/nzt108/Projects
@@ -30,14 +29,19 @@
 - [x] MCP integrated with IDE
 - [x] README.md, MIT License, .gitignore, pyproject.toml
 
+### Mission Control Integration
+- [x] Dashboard integrated into nzt108.dev/admin/workspaces
+- [x] 25 projects synced to portfolio DB (status, stack, services)
+- [x] `/push` workflow updated — auto-syncs lastCommit to portfolio
+- [x] Push workflows created for obsidian-second-mind + architect-portfolio
+
 ## Known Issues / Blockers
 - After CLI re-index, MCP server needs `rebuild_index` (not just CLI `index`)
 
 ## What's Next
-1. Register project in portfolio (nzt108.dev)
-2. Create Notion Documentation Hub
-3. GitHub Actions CI
-4. Add detailed architecture notes for key projects
+1. Create Notion Documentation Hub
+2. GitHub Actions CI
+3. Add detailed architecture notes for key projects
 
 ## Key Files
 - `src/obsidian_bridge/mcp_server.py` — MCP server entry
@@ -45,4 +49,5 @@
 - `src/obsidian_bridge/indexer.py` — ChromaDB indexer
 - `src/obsidian_bridge/cli.py` — CLI interface
 - `src/obsidian_bridge/watcher.py` — File watcher
+- `.agent/workflows/push.md` — Push workflow with Mission Control sync
 - `scripts/populate_vault.sh` — Vault population script
