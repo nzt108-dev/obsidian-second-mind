@@ -1,9 +1,14 @@
-"""Indexer module — chunks notes and stores embeddings in ChromaDB."""
+"""Indexer module — chunks notes and stores embeddings in ChromaDB.
+
+v0.2.0: Hybrid RAG — Vector + BM25 keyword search + RRF fusion + Cross-Encoder reranking.
+"""
 import logging
+import re
 from pathlib import Path
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
+from rank_bm25 import BM25Okapi
 
 from obsidian_bridge.config import Settings
 from obsidian_bridge.models import Chunk, Note
@@ -102,11 +107,203 @@ def chunk_note(note: Note, chunk_size: int = 500, chunk_overlap: int = 50) -> li
 
 
 # ---------------------------------------------------------------------------
-# ChromaDB Index
+# BM25 Keyword Index
+# ---------------------------------------------------------------------------
+
+_TOKENIZE_PATTERN = re.compile(r"[a-zA-Zа-яА-ЯёЁ0-9_\-\.]+")
+
+
+def _tokenize(text: str) -> list[str]:
+    """Tokenize text for BM25. Handles English, Russian, technical terms."""
+    return _TOKENIZE_PATTERN.findall(text.lower())
+
+
+class BM25Index:
+    """In-memory BM25 keyword index over document chunks."""
+
+    def __init__(self):
+        self._doc_ids: list[str] = []
+        self._doc_texts: list[str] = []
+        self._doc_metadata: list[dict] = []
+        self._bm25: BM25Okapi | None = None
+
+    @property
+    def count(self) -> int:
+        return len(self._doc_ids)
+
+    def build(self, doc_ids: list[str], documents: list[str], metadatas: list[dict]):
+        """Build BM25 index from document list."""
+        self._doc_ids = doc_ids
+        self._doc_texts = documents
+        self._doc_metadata = metadatas
+
+        tokenized_corpus = [_tokenize(doc) for doc in documents]
+        self._bm25 = BM25Okapi(tokenized_corpus)
+        logger.info(f"BM25 index built: {len(doc_ids)} documents")
+
+    def search(
+        self,
+        query: str,
+        n_results: int = 10,
+        project: str | None = None,
+    ) -> list[dict]:
+        """BM25 keyword search. Returns list of {doc_id, text, metadata, score}."""
+        if self._bm25 is None or not self._doc_ids:
+            return []
+
+        tokenized_query = _tokenize(query)
+        if not tokenized_query:
+            return []
+
+        scores = self._bm25.get_scores(tokenized_query)
+
+        # Pair scores with indices, filter by project if needed
+        scored = []
+        for idx, score in enumerate(scores):
+            if score <= 0:
+                continue
+            if project and self._doc_metadata[idx].get("project") != project:
+                continue
+            scored.append((idx, score))
+
+        # Sort by score descending
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        results = []
+        for idx, score in scored[:n_results]:
+            results.append({
+                "doc_id": self._doc_ids[idx],
+                "text": self._doc_texts[idx],
+                "metadata": self._doc_metadata[idx],
+                "score": float(score),
+            })
+
+        return results
+
+
+# ---------------------------------------------------------------------------
+# Reciprocal Rank Fusion
+# ---------------------------------------------------------------------------
+
+def reciprocal_rank_fusion(
+    vector_results: list[dict],
+    bm25_results: list[dict],
+    vector_weight: float = 1.0,
+    bm25_weight: float = 1.0,
+    k: int = 60,
+    n_results: int = 10,
+) -> list[dict]:
+    """Merge vector and BM25 results using Reciprocal Rank Fusion.
+
+    RRF score = sum(weight / (k + rank)) across both result lists.
+    k=60 is the standard constant that prevents high-ranked items from dominating.
+
+    Returns merged list sorted by RRF score, deduplicated by doc text.
+    """
+    # Use text as key for dedup (doc_ids may differ between vector and BM25)
+    scored: dict[str, dict] = {}  # text -> {data, rrf_score}
+
+    for rank, item in enumerate(vector_results):
+        text = item["text"]
+        rrf = vector_weight / (k + rank + 1)
+        if text in scored:
+            scored[text]["rrf_score"] += rrf
+        else:
+            scored[text] = {
+                "text": text,
+                "source": item.get("source", item.get("metadata", {}).get("source", "")),
+                "project": item.get("project", item.get("metadata", {}).get("project", "")),
+                "type": item.get("type", item.get("metadata", {}).get("type", "")),
+                "tags": item.get("tags", item.get("metadata", {}).get("tags", "")),
+                "section": item.get("section", item.get("metadata", {}).get("section", "")),
+                "rrf_score": rrf,
+                "vector_rank": rank + 1,
+                "bm25_rank": None,
+            }
+
+    for rank, item in enumerate(bm25_results):
+        text = item["text"]
+        rrf = bm25_weight / (k + rank + 1)
+        if text in scored:
+            scored[text]["rrf_score"] += rrf
+            scored[text]["bm25_rank"] = rank + 1
+        else:
+            meta = item.get("metadata", {})
+            tags = meta.get("tags", "")
+            scored[text] = {
+                "text": text,
+                "source": meta.get("source", ""),
+                "project": meta.get("project", ""),
+                "type": meta.get("type", ""),
+                "tags": tags,
+                "section": meta.get("section", ""),
+                "rrf_score": rrf,
+                "vector_rank": None,
+                "bm25_rank": rank + 1,
+            }
+
+    # Sort by RRF score descending
+    merged = sorted(scored.values(), key=lambda x: x["rrf_score"], reverse=True)
+
+    return merged[:n_results]
+
+
+# ---------------------------------------------------------------------------
+# Cross-Encoder Reranker
+# ---------------------------------------------------------------------------
+
+class Reranker:
+    """Cross-Encoder reranker for precise relevance scoring."""
+
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
+        self._model_name = model_name
+        self._model = None
+
+    def _load_model(self):
+        """Lazy-load the model on first use."""
+        if self._model is None:
+            from sentence_transformers import CrossEncoder
+            logger.info(f"Loading reranker model: {self._model_name}")
+            self._model = CrossEncoder(self._model_name)
+            logger.info("Reranker model loaded")
+
+    def rerank(
+        self,
+        query: str,
+        candidates: list[dict],
+        top_k: int = 5,
+    ) -> list[dict]:
+        """Rerank candidates using cross-encoder. Returns top_k with rerank_score."""
+        if not candidates:
+            return []
+
+        self._load_model()
+
+        pairs = [[query, c["text"]] for c in candidates]
+        scores = self._model.predict(pairs)
+
+        for candidate, score in zip(candidates, scores):
+            candidate["rerank_score"] = float(score)
+
+        # Sort by rerank score (higher = more relevant)
+        reranked = sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
+
+        return reranked[:top_k]
+
+
+# ---------------------------------------------------------------------------
+# ChromaDB + Hybrid Index
 # ---------------------------------------------------------------------------
 
 class VaultIndex:
-    """Manages the ChromaDB vector index for the vault."""
+    """Manages the ChromaDB vector index + BM25 keyword index for the vault.
+
+    v0.2.0: Hybrid search pipeline:
+    1. ChromaDB vector search (semantic similarity)
+    2. BM25 keyword search (exact term matching)
+    3. RRF fusion (merge + deduplicate)
+    4. Cross-Encoder reranking (optional, precise relevance)
+    """
 
     COLLECTION_NAME = "obsidian_vault"
 
@@ -124,13 +321,37 @@ class VaultIndex:
             metadata={"hnsw:space": "cosine"},
         )
 
+        # BM25 index (in-memory, rebuilt from ChromaDB on init)
+        self._bm25_index = BM25Index()
+        self._rebuild_bm25()
+
+        # Reranker (lazy-loaded)
+        self._reranker: Reranker | None = None
+        if settings.reranking:
+            self._reranker = Reranker(settings.rerank_model)
+
+    def _rebuild_bm25(self):
+        """Rebuild BM25 index from current ChromaDB contents."""
+        count = self._collection.count()
+        if count == 0:
+            logger.info("ChromaDB empty, skipping BM25 build")
+            return
+
+        all_data = self._collection.get(include=["documents", "metadatas"])
+        if all_data and all_data["ids"]:
+            self._bm25_index.build(
+                doc_ids=all_data["ids"],
+                documents=all_data["documents"],
+                metadatas=all_data["metadatas"],
+            )
+
     @property
     def count(self) -> int:
         """Number of chunks in the index."""
         return self._collection.count()
 
     def index_notes(self, notes: list[Note]) -> dict:
-        """Index a list of notes into ChromaDB.
+        """Index a list of notes into ChromaDB + BM25.
 
         Returns dict with stats: {added, updated, skipped, total_chunks}.
         """
@@ -144,14 +365,13 @@ class VaultIndex:
             )
             stats["total_chunks"] += len(chunks)
 
-            # Check if already indexed with same checksum
+            # Check if already indexed
             existing = self._collection.get(
                 where={"source": str(note.path)},
                 include=[],
             )
 
             if existing and existing["ids"]:
-                # Delete old chunks for this file
                 self._collection.delete(ids=existing["ids"])
                 stats["updated"] += 1
             else:
@@ -166,6 +386,9 @@ class VaultIndex:
                 metadatas=[c.metadata for c in chunks],
             )
 
+        # Rebuild BM25 after indexing
+        self._rebuild_bm25()
+
         return stats
 
     def search(
@@ -176,10 +399,103 @@ class VaultIndex:
         note_type: str | None = None,
         tags: list[str] | None = None,
     ) -> list[dict]:
-        """Semantic search across the vault.
+        """Hybrid search across the vault.
 
-        Returns list of {text, source, project, type, tags, score}.
+        Pipeline:
+        1. Vector search (ChromaDB) — semantic similarity
+        2. BM25 search — keyword matching (if hybrid enabled)
+        3. RRF fusion — merge results
+        4. Cross-Encoder reranking — precise relevance (if enabled)
+
+        Returns list of {text, source, project, type, tags, score, search_method}.
         """
+        use_hybrid = self.settings.hybrid_search and self._bm25_index.count > 0
+        use_reranking = self.settings.reranking and self._reranker is not None
+
+        # How many candidates to fetch (over-fetch for reranking)
+        fetch_n = n_results * self.settings.retrieval_multiplier if use_reranking else n_results
+        if use_hybrid:
+            # Each source fetches fetch_n, then merged
+            fetch_per_source = fetch_n
+        else:
+            fetch_per_source = fetch_n
+
+        # --- Stage 1: Vector search (ChromaDB) ---
+        vector_results = self._vector_search(query, fetch_per_source, project, note_type)
+
+        if not use_hybrid:
+            # Pure vector mode (original behavior)
+            results = self._format_results(vector_results, tags, "vector")
+            if use_reranking and results:
+                results = self._reranker.rerank(query, results, top_k=n_results)
+                for r in results:
+                    r["search_method"] = "vector+rerank"
+            return results[:n_results]
+
+        # --- Stage 2: BM25 keyword search ---
+        bm25_results = self._bm25_index.search(query, n_results=fetch_per_source, project=project)
+
+        # --- Stage 3: RRF Fusion ---
+        fused = reciprocal_rank_fusion(
+            vector_results=vector_results,
+            bm25_results=bm25_results,
+            vector_weight=self.settings.vector_weight,
+            bm25_weight=self.settings.bm25_weight,
+            n_results=fetch_n,
+        )
+
+        # Apply tag filter if specified
+        if tags:
+            fused = [
+                r for r in fused
+                if set(str(r.get("tags", "")).split(",")).intersection(set(tags))
+            ]
+
+        # Set search method info
+        for r in fused:
+            methods = []
+            if r.get("vector_rank"):
+                methods.append(f"vec#{r['vector_rank']}")
+            if r.get("bm25_rank"):
+                methods.append(f"bm25#{r['bm25_rank']}")
+            r["search_method"] = "+".join(methods) if methods else "hybrid"
+
+        # --- Stage 4: Cross-Encoder Reranking ---
+        if use_reranking and fused:
+            fused = self._reranker.rerank(query, fused, top_k=n_results)
+            for r in fused:
+                r["search_method"] += "+rerank"
+
+        # Format final output
+        output = []
+        for r in fused[:n_results]:
+            tags_val = r.get("tags", "")
+            if isinstance(tags_val, str):
+                tags_list = tags_val.split(",") if tags_val else []
+            else:
+                tags_list = tags_val
+
+            output.append({
+                "text": r["text"],
+                "source": r.get("source", ""),
+                "project": r.get("project", ""),
+                "type": r.get("type", ""),
+                "tags": tags_list,
+                "section": r.get("section", ""),
+                "score": round(r.get("rerank_score", r.get("rrf_score", 0)), 4),
+                "search_method": r.get("search_method", "hybrid"),
+            })
+
+        return output
+
+    def _vector_search(
+        self,
+        query: str,
+        n_results: int,
+        project: str | None = None,
+        note_type: str | None = None,
+    ) -> list[dict]:
+        """Raw vector search via ChromaDB."""
         where_filter = {}
         if project:
             where_filter["project"] = project
@@ -202,22 +518,42 @@ class VaultIndex:
             results["metadatas"][0],
             results["distances"][0],
         ):
-            # Filter by tags if specified (post-filter since ChromaDB doesn't support array contains)
-            if tags:
-                chunk_tags = set(meta.get("tags", "").split(","))
-                if not chunk_tags.intersection(set(tags)):
-                    continue
-
             output.append({
                 "text": doc,
                 "source": meta.get("source", ""),
                 "project": meta.get("project", ""),
                 "type": meta.get("type", ""),
-                "tags": meta.get("tags", "").split(","),
+                "tags": meta.get("tags", ""),
                 "section": meta.get("section", ""),
-                "score": round(1 - dist, 4),  # Convert distance to similarity
+                "score": round(1 - dist, 4),
             })
 
+        return output
+
+    def _format_results(
+        self,
+        raw: list[dict],
+        tags: list[str] | None,
+        method: str,
+    ) -> list[dict]:
+        """Format raw vector results with tag filtering."""
+        output = []
+        for r in raw:
+            if tags:
+                chunk_tags = set(str(r.get("tags", "")).split(","))
+                if not chunk_tags.intersection(set(tags)):
+                    continue
+            tags_val = r.get("tags", "")
+            output.append({
+                "text": r["text"],
+                "source": r.get("source", ""),
+                "project": r.get("project", ""),
+                "type": r.get("type", ""),
+                "tags": tags_val.split(",") if isinstance(tags_val, str) else tags_val,
+                "section": r.get("section", ""),
+                "score": r.get("score", 0),
+                "search_method": method,
+            })
         return output
 
     def clear(self):
@@ -227,6 +563,7 @@ class VaultIndex:
             name=self.COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"},
         )
+        self._bm25_index = BM25Index()
 
     def get_stats(self) -> dict:
         """Get index statistics."""
@@ -245,4 +582,7 @@ class VaultIndex:
             "total_notes": len(sources),
             "projects": sorted(p for p in projects if p),
             "types": sorted(t for t in types if t),
+            "hybrid_search": self.settings.hybrid_search,
+            "reranking": self.settings.reranking,
+            "bm25_docs": self._bm25_index.count,
         }

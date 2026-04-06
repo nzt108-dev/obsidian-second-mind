@@ -247,8 +247,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         output_parts = []
         for i, r in enumerate(results, 1):
+            method = r.get('search_method', '')
+            method_badge = f" [{method}]" if method else ""
             output_parts.append(
-                f"### Result {i} (score: {r['score']}) — {r['source']}\n"
+                f"### Result {i} (score: {r['score']}{method_badge}) — {r['source']}\n"
                 f"**Project**: {r['project']} | **Type**: {r['type']}\n\n"
                 f"{r['text']}"
             )

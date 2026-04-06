@@ -35,3 +35,53 @@
 4. Add more project notes (faithly, nzt108-dev)
 5. Register project in portfolio
 6. Create Notion Documentation Hub
+
+---
+
+## Session 2026-04-05 — Vault Population & Project Migration
+
+### What Was Done
+1. Verified MCP server integration — all tools working after IDE restart
+2. Explored all projects in `/Users/nzt108/Projects` (5 projects) and `/Users/nzt108/.gemini/antigravity/scratch` (13 projects)
+3. Created vault notes for 16 projects:
+   - **faithly** — PRD + Architecture (Flutter, Firebase, social network)
+   - **nzt108-dev** — PRD + Architecture (portfolio, Next.js 15, Turso)
+   - **ai-content-fabric** — PRD + Architecture (video pipeline, ElevenLabs, MoviePy)
+   - **botseller** — PRD + Architecture (Telegram bot, digital goods)
+   - **social-leads-parser** — PRD + Architecture (FastAPI, lead gen)
+   - **brieftube** — Guidelines added (Flutter conventions, AI quality)
+   - **youtube-parser** — PRD + Architecture (Channel Watch, Supabase)
+   - **zillow-parser** — PRD + Architecture (NorCal Deal Engine)
+   - **norcal-deals** — PRD (FlipRadar Flutter app)
+   - **dance-studio-website** — PRD (static HTML site)
+   - **content-fabric-saas** — PRD (Flutter + Supabase)
+   - **astro-psiholog** — PRD (Flutter AI app)
+   - **my-remote-office** — PRD (Telegram task management)
+   - **zillow-landing** — PRD (Next.js landing)
+   - **sendler-bot** — PRD (Codex Swarm multi-agent)
+   - **yt-saas-frontend** — PRD (Next.js admin dashboard)
+4. Total: 28 notes → 116 chunks indexed
+5. Migrated 11 projects from `.gemini/antigravity/scratch` to `/Users/nzt108/Projects`:
+   - Astro-psiholog, Faithly, architect-portfolio, botseller_tg
+   - content-fabric-saas, dance-studio-website, my-remote-office
+   - norcal_deals, youtube-parser, zillow-landing, zillow-parser
+6. Updated MASTER.md paths (architect-portfolio → /Users/nzt108/Projects/)
+7. Rebuilt search index via `rebuild_index` MCP tool
+8. Verified semantic search works for all new projects
+
+### What Failed / Issues
+- After CLI `index` command, MCP server cached old ChromaDB collection ID
+- Fixed by using `rebuild_index` MCP tool instead of CLI
+
+### Files Changed
+- `scripts/populate_vault.sh` — batch vault population script
+- `docs/SESSION_LOG.md` — updated
+- `docs/CURRENT_STATUS.md` — updated
+- `/Users/nzt108/.gemini/antigravity/shared/MASTER.md` — path updates
+
+### Next Session — What To Do First
+1. Handle duplicate projects (botseller_saas, social-leads-parser in both .gemini and Projects)
+2. Register obsidian-second-mind in portfolio
+3. Create Notion Documentation Hub
+4. GitHub Actions CI
+5. Add more detailed architecture notes for key projects

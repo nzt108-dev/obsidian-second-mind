@@ -35,6 +35,32 @@ class Settings(BaseSettings):
         description="Debounce time in seconds for file watcher",
     )
 
+    # --- Hybrid Search Settings ---
+    hybrid_search: bool = Field(
+        default=True,
+        description="Enable hybrid search (vector + BM25 keyword). Disable for pure vector.",
+    )
+    reranking: bool = Field(
+        default=True,
+        description="Enable Cross-Encoder reranking of search results.",
+    )
+    rerank_model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-6-v2",
+        description="Cross-encoder model for reranking.",
+    )
+    bm25_weight: float = Field(
+        default=1.0,
+        description="BM25 weight in RRF fusion (relative to vector weight).",
+    )
+    vector_weight: float = Field(
+        default=1.0,
+        description="Vector search weight in RRF fusion.",
+    )
+    retrieval_multiplier: int = Field(
+        default=3,
+        description="Over-fetch multiplier for hybrid retrieval (fetch N*multiplier, rerank to N).",
+    )
+
     model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env"}
 
 
