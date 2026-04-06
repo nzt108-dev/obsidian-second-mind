@@ -49,6 +49,7 @@ curl -s -X POST https://nzt108.dev/api/agent/projects \
   -H "Content-Type: application/json" \
   -d "{
     \"slug\": \"obsidian-second-mind\",
+    \"title\": \"Obsidian Second Mind\",
     \"lastCommitHash\": \"$COMMIT_HASH\",
     \"lastCommitMsg\": \"$COMMIT_MSG\",
     \"lastCommitDate\": \"$COMMIT_DATE\"
