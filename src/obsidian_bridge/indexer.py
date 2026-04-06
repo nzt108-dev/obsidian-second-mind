@@ -4,7 +4,6 @@ v0.2.0: Hybrid RAG — Vector + BM25 keyword search + RRF fusion + Cross-Encoder
 """
 import logging
 import re
-from pathlib import Path
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings

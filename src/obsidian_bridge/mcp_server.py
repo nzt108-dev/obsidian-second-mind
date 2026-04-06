@@ -345,7 +345,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=f"✅ Note created: {file_path.relative_to(vault)}")]
 
     elif name == "rebuild_index":
-        settings = get_settings()
         index = _get_index()
         index.clear()
         notes = scan_vault(vault)

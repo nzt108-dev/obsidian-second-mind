@@ -3,7 +3,7 @@ import json
 import webbrowser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from functools import partial
+
 
 from .dashboard_data import generate_projects_data
 

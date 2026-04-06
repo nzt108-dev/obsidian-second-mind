@@ -6,7 +6,6 @@ import click
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.markdown import Markdown
 
 from obsidian_bridge.config import get_settings
 
