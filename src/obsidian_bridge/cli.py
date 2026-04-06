@@ -1,6 +1,5 @@
 """CLI interface for Obsidian Second Mind."""
 import logging
-import sys
 
 import click
 from rich.console import Console
