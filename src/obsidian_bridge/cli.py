@@ -33,8 +33,10 @@ def cli(ctx, vault, verbose):
 @click.pass_context
 def serve(ctx):
     """Start the MCP server (stdio mode for IDE integration)."""
-    console.print("[bold green]Starting MCP server...[/]")
-    console.print(f"Vault: {ctx.obj['settings'].vault_path}")
+    # MCP uses stdio for JSON-RPC — all human-readable output MUST go to stderr
+    err_console = Console(stderr=True)
+    err_console.print("[bold green]Starting MCP server...[/]")
+    err_console.print(f"Vault: {ctx.obj['settings'].vault_path}")
 
     from obsidian_bridge.mcp_server import main
     main()

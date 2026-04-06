@@ -26,7 +26,7 @@
 - Fixed by using shell scripts for batch operations
 
 ### Git Commits
-- Initial commit pending
+- `ff8b79d` — feat: initial release — Obsidian Second Mind MCP server (pushed to origin/main)
 
 ### Next Session — What To Do First
 1. Push to GitHub (nzt108-dev/obsidian-second-mind)
