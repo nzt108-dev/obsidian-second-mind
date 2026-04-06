@@ -43,9 +43,9 @@ jobs:
       - name: Check imports
         run: |
           python -c "from obsidian_bridge.parser import parse_note; print('✅ parser OK')"
-          python -c "from obsidian_bridge.indexer import VaultIndexer; print('✅ indexer OK')"
+          python -c "from obsidian_bridge.indexer import VaultIndex; print('✅ indexer OK')"
           python -c "from obsidian_bridge.cli import cli; print('✅ cli OK')"
-          python -c "from obsidian_bridge.watcher import VaultWatcher; print('✅ watcher OK')"
+          python -c "from obsidian_bridge.watcher import start_watcher; print('✅ watcher OK')"
           python -c "from obsidian_bridge.models import Note, Chunk; print('✅ models OK')"
           python -c "from obsidian_bridge.config import Settings; print('✅ config OK')"
 
