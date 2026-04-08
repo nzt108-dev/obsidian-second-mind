@@ -71,3 +71,37 @@
 2. Add unit tests (pytest)
 3. Performance benchmarks
 4. Consider PyPI publish
+
+---
+
+## Session 2026-04-07 — Karpathy LLM Wiki Pattern Integration (v0.3.0)
+
+### What Was Done
+1. **Analyzed Karpathy's LLM Wiki gist** — compared with our system (60-65% match before)
+2. **New module: linter.py** — 6 vault health checks (orphans, stale, broken links, missing concepts, TODOs, frontmatter)
+3. **MMR diversity + deduplication** — 6-stage search pipeline (Vector→BM25→RRF→CrossEncoder→Dedup→MMR)
+4. **Extended MCP server** — +287 lines:
+   - New tools: `update_note`, `lint_vault`
+   - New note types: concept, comparison, synthesis, research
+   - Auto-generated `index.md` + `log.md` (Karpathy pattern)
+5. **Wiki Schema** — `_global/wiki-schema.md` (Layer 3 — vault conventions)
+6. **Roadmap v0.4.0** — documented 5 features to reach 17/17 vs AI-мозг
+7. **Three-way comparison** — Karpathy vs AI-мозг vs our system (12/17 ✅)
+
+### What Failed / Issues
+- `create_note` MCP call failed with YAML date parsing (tags with date-like strings)
+  - Fixed: quote tags in YAML + str-cast in parser.py
+- write_to_file tool canceled twice (timing issues)
+  - Workaround: used `cat > file << 'EOF'` via run_command
+
+### Git Commits
+- `bca40b3` — feat: v0.3.0 — Karpathy LLM Wiki Pattern integration
+
+### Uncommitted Changes
+None
+
+### Next Session — What To Do First
+1. Start v0.4.0 Adaptive Brain (Decay Scoring first)
+2. Add unit tests for linter + MMR
+3. Consider CI for lint_vault
+

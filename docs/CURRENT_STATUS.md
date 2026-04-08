@@ -1,62 +1,52 @@
 # Obsidian Second Mind — Current Status
-> Last updated: 2026-04-06
+> Last updated: 2026-04-07
 
 ## Version / Build Status
-- Version: 0.1.0
-- Status: ✅ Working — CLI + Index + Search + MCP Server integrated
-- MCP Server: ✅ Connected to ANTIGRAVITY IDE
-- CI: ✅ GitHub Actions (ruff lint + import check + pytest)
+- **Version**: 0.3.0 "Wiki Pattern"
+- **CI**: GitHub Actions (ruff + import check + pytest + CLI verify)
+- **Lint**: ✅ All checks passed
 
 ## What's Done
-### Core
-- [x] Markdown parser with YAML frontmatter
-- [x] WikiLink and embed resolution
-- [x] Inline tag extraction
-- [x] ChromaDB vector indexer (Hybrid RAG: Vector + BM25 + RRF + Cross-Encoder)
-- [x] Semantic search
-- [x] MCP Server (7 tools, 3 resources)
-- [x] CLI interface (8 commands incl. dashboard)
-- [x] File watcher daemon
+### Core (v0.1.0)
+- Obsidian vault at ~/SecondMind/ — 19 projects, 53+ notes, 524+ chunks
+- MCP server (stdio) — 9 tools
+- Parser: frontmatter + WikiLinks + inline tags
+- Indexer: ChromaDB + sentence-transformers
 
-### Vault Content
-- [x] Vault structure at ~/SecondMind
-- [x] Global notes (3): coding-standards, tech-stack, design-principles
-- [x] Templates (2): project-prd, architecture-decision
-- [x] **16 projects documented** — ALL with detailed architecture
-- [x] **47 notes → 524 chunks indexed**
-- [x] **45 notes with WikiLinks** — rich Graph View in Obsidian
+### Hybrid Search (v0.2.0)
+- BM25 keyword index (rank-bm25)
+- RRF fusion (vector + keyword)
+- Cross-Encoder reranking
+
+### Karpathy Wiki Pattern (v0.3.0)
+- **Linter** — 6 health checks (orphans, stale, broken links, missing concepts, TODOs, frontmatter)
+- **MMR diversity** — near-duplicate detection + Maximal Marginal Relevance
+- **New tools**: update_note, lint_vault
+- **New note types**: concept, comparison, synthesis, research
+- **Auto-generated**: index.md (vault catalog) + log.md (operation log)
+- **Wiki Schema**: _global/wiki-schema.md (vault conventions)
 
 ### Infrastructure
-- [x] Projects migrated from .gemini/scratch → /Users/nzt108/Projects
-- [x] MCP integrated with IDE
-- [x] README.md, MIT License, .gitignore, pyproject.toml
-- [x] GitHub Actions CI (ruff, imports, pytest, CLI check)
-
-### Mission Control Integration
-- [x] Dashboard integrated into nzt108.dev/admin/workspaces
-- [x] 25 projects synced to portfolio DB (status, stack, services)
-- [x] `/push` workflow — auto-syncs lastCommit to portfolio
-- [x] Push workflows for obsidian-second-mind + architect-portfolio + youtube-parser
-
-### Documentation
-- [x] Notion Documentation Hub created (5 pages: PRD, FSD, User Flow Map, FSM, Test Matrix)
-- [x] Session logs maintained
+- WikiLinks across 45/47 notes
+- GitHub Actions CI
+- Notion Documentation Hub
+- Push workflow with portfolio sync
+- Dashboard (HTML/JS)
 
 ## Known Issues / Blockers
-- After CLI re-index, MCP server needs `rebuild_index` (not just CLI `index`)
+- YAML date parsing: tags like "2026-04-08" auto-parse as datetime.date — fixed with quoting
+- MCP server needs restart after code changes
 
-## What's Next
-1. Add unit tests (pytest)
-2. Add more edge-case handling (empty vault, corrupted frontmatter)
-3. Performance benchmarks (search latency, memory)
-4. Consider publishing to PyPI
+## What's Next (v0.4.0 "Adaptive Brain")
+1. Decay Scoring — свежие заметки ранжируются выше
+2. Watchdog Hooks — авто re-index при изменениях
+3. Queryable Knowledge Graph — NetworkX + MCP tool
+4. Dashboard v2 — визуализация графа + health score
+5. Auto-Rules — паттерны из decision outcomes
 
 ## Key Files
-- `src/obsidian_bridge/mcp_server.py` — MCP server entry
-- `src/obsidian_bridge/parser.py` — Markdown parser
-- `src/obsidian_bridge/indexer.py` — ChromaDB + BM25 Hybrid indexer
-- `src/obsidian_bridge/cli.py` — CLI interface
-- `src/obsidian_bridge/watcher.py` — File watcher
-- `.agent/workflows/push.md` — Push workflow with Mission Control sync
-- `.github/workflows/ci.yml` — GitHub Actions CI
-- `scripts/` — vault population, WikiLinks, Notion hub scripts
+- `src/obsidian_bridge/mcp_server.py` — MCP server (9 tools)
+- `src/obsidian_bridge/indexer.py` — Hybrid search + MMR
+- `src/obsidian_bridge/linter.py` — Vault health checks
+- `src/obsidian_bridge/config.py` — All settings
+- `docs/ROADMAP_v0.4.0.md` — Next version roadmap
