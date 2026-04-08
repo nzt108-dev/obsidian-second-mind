@@ -105,3 +105,28 @@ None
 2. Add unit tests for linter + MMR
 3. Consider CI for lint_vault
 
+---
+
+## Session 2026-04-07 (cont.) — Adaptive Brain v0.4.0
+
+### What Was Done
+1. **Knowledge Graph** (`graph.py`) — queryable graph from WikiLinks (26 nodes, 130 edges)
+   - Neighbors, path finding, hub detection, cluster analysis
+   - Top hub: NorCal Deal Engine Architecture (11 connections)
+2. **Pattern Extractor** (`patterns.py`) — auto-rules from decision outcomes
+   - 12 decisions analyzed, 2 with outcomes, 10 missing
+   - Auto-generates `_global/auto-rules.md`
+3. **Decay Scoring** — exponential decay in search (λ=0.005, half-life ~139 days)
+   - Fresh notes rank higher (3-month note loses ~36% score)
+4. **Enhanced Watcher** — auto-logging + index.md regen on vault file changes
+5. **2 new MCP tools**: `query_graph`, `extract_patterns` (total: 11 tools)
+
+### Git Commits
+- `965dd9a` — feat: v0.4.0 — Adaptive Brain
+
+### Next Session — What To Do First
+1. Add Outcome sections to all 10 decisions missing them
+2. Dashboard v2 (graph visualization, health score)
+3. Unit tests for graph + patterns + decay
+4. Consider PyPI publish
+

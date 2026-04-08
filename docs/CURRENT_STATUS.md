@@ -2,7 +2,7 @@
 > Last updated: 2026-04-07
 
 ## Version / Build Status
-- **Version**: 0.3.0 "Wiki Pattern"
+- **Version**: 0.4.0 "Adaptive Brain"
 - **CI**: GitHub Actions (ruff + import check + pytest + CLI verify)
 - **Lint**: ✅ All checks passed
 
@@ -25,6 +25,13 @@
 - **New note types**: concept, comparison, synthesis, research
 - **Auto-generated**: index.md (vault catalog) + log.md (operation log)
 - **Wiki Schema**: _global/wiki-schema.md (vault conventions)
+
+### Adaptive Brain (v0.4.0)
+- **Knowledge Graph** — queryable graph from WikiLinks (26 nodes, 130 edges, hub detection)
+- **Pattern Extractor** — auto-rules from decision outcomes (success/failure patterns)
+- **Decay Scoring** — exponential decay in search (λ=0.005, fresh notes rank higher)
+- **Enhanced Watcher** — auto-logging + index.md regen on vault changes
+- **11 MCP tools** total
 
 ### Infrastructure
 - WikiLinks across 45/47 notes
