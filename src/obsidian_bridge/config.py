@@ -81,6 +81,16 @@ class Settings(BaseSettings):
         description="Notes not updated for this many days are flagged as stale.",
     )
 
+    # --- Decay Settings ---
+    decay_enabled: bool = Field(
+        default=True,
+        description="Enable freshness decay in search scoring. Fresh notes rank higher.",
+    )
+    decay_lambda: float = Field(
+        default=0.005,
+        description="Decay rate. 0.005 = half-life ~139 days. Higher = faster decay.",
+    )
+
     model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env"}
 
 

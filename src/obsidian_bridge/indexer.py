@@ -1,9 +1,9 @@
 """Indexer module — chunks notes and stores embeddings in ChromaDB.
 
-v0.3.0: Hybrid RAG — Vector + BM25 keyword search + RRF fusion + Cross-Encoder reranking
-         + MMR diversity + near-duplicate detection.
+v0.4.0: Hybrid RAG — Vector + BM25 + RRF + Cross-Encoder + Dedup + MMR + Decay.
 """
 import logging
+import math
 import re
 
 import chromadb
@@ -405,6 +405,56 @@ def mmr_diversify(
 
 
 # ---------------------------------------------------------------------------
+# Decay Scoring — freshness bias
+# ---------------------------------------------------------------------------
+
+def _apply_decay(
+    results: list[dict],
+    decay_lambda: float = 0.005,
+) -> list[dict]:
+    """Apply exponential decay to scores based on document freshness.
+
+    decay_score = base_score × e^(-λ × days_since_update)
+    λ = 0.005 gives half-life ~139 days (decent for project docs).
+
+    Reads 'updated' from metadata. If missing, no decay is applied.
+    """
+    from datetime import date as _date
+
+    today = _date.today()
+
+    for r in results:
+        updated_str = r.get("updated", "")
+        if not updated_str:
+            continue
+
+        try:
+            if isinstance(updated_str, str):
+                updated = _date.fromisoformat(updated_str)
+            elif hasattr(updated_str, "date"):
+                updated = updated_str
+            else:
+                continue
+
+            days_old = (today - updated).days
+            if days_old < 0:
+                days_old = 0
+
+            decay_factor = math.exp(-decay_lambda * days_old)
+
+            # Apply decay to whichever score is present
+            for score_key in ("rerank_score", "rrf_score", "score"):
+                if score_key in r:
+                    r[score_key] = r[score_key] * decay_factor
+                    break
+
+        except (ValueError, TypeError):
+            continue
+
+    return results
+
+
+# ---------------------------------------------------------------------------
 # ChromaDB + Hybrid Index
 # ---------------------------------------------------------------------------
 
@@ -592,6 +642,14 @@ class VaultIndex:
             )
             for r in fused:
                 r["search_method"] = r.get("search_method", "") + "+mmr"
+
+        # --- Stage 7: Decay Scoring ---
+        if self.settings.decay_enabled:
+            fused = _apply_decay(fused, self.settings.decay_lambda)
+            for r in fused:
+                r["search_method"] = r.get("search_method", "") + "+decay"
+            # Re-sort by decayed score
+            fused.sort(key=lambda r: r.get("rerank_score", r.get("rrf_score", 0)), reverse=True)
 
         # Format final output
         output = []

@@ -1,10 +1,10 @@
 """MCP Server for Obsidian Second Mind.
 
-v0.3.0: Karpathy LLM Wiki Pattern integration.
-- Extended note types: concept, comparison, synthesis, research
-- New tools: lint_vault, update_note
-- Auto-generated index.md and log.md in vault
-- Write-back pattern support
+v0.4.0: Adaptive Brain.
+- Knowledge graph: query_graph tool (neighbors, paths, hubs, clusters)
+- Pattern extraction: extract_patterns tool (auto-rules from decision outcomes)
+- Decay scoring in search (fresh notes rank higher)
+- Enhanced watcher hooks (auto-logging, index.md regeneration)
 """
 import json
 import logging
@@ -20,9 +20,11 @@ from mcp.types import (
 )
 
 from obsidian_bridge.config import get_settings
+from obsidian_bridge.graph import KnowledgeGraph
 from obsidian_bridge.indexer import VaultIndex
 from obsidian_bridge.linter import VaultLinter
 from obsidian_bridge.parser import get_project_notes, get_projects, parse_note, scan_vault
+from obsidian_bridge.patterns import PatternExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -435,6 +437,52 @@ async def list_tools() -> list[Tool]:
                 "properties": {},
             },
         ),
+        Tool(
+            name="query_graph",
+            description="Query the knowledge graph built from WikiLinks. Find connections between notes, hub pages, shortest paths, and clusters. Use to understand how concepts relate across projects.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query_type": {
+                        "type": "string",
+                        "description": "Type of graph query",
+                        "enum": ["neighbors", "path", "hubs", "clusters", "stats"],
+                    },
+                    "node": {
+                        "type": "string",
+                        "description": "Node name (note stem) for neighbors/path queries",
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "Target node for path queries",
+                    },
+                    "depth": {
+                        "type": "integer",
+                        "description": "Depth for neighbor traversal (default: 2)",
+                        "default": 2,
+                    },
+                },
+                "required": ["query_type"],
+            },
+        ),
+        Tool(
+            name="extract_patterns",
+            description="Analyze decision outcomes across projects. Extract success patterns (best practices) and failure anti-patterns. Optionally generate auto-rules file in _global/auto-rules.md.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Optional: filter by project",
+                    },
+                    "generate_rules": {
+                        "type": "boolean",
+                        "description": "Generate auto-rules.md in vault (default: false)",
+                        "default": False,
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -628,6 +676,77 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 f"- log.md updated\n"
             ),
         )]
+
+    elif name == "query_graph":
+        graph = KnowledgeGraph(vault)
+        graph.build()
+        query_type = arguments.get("query_type", "stats")
+
+        if query_type == "stats":
+            result = graph.to_markdown()
+        elif query_type == "neighbors":
+            node = arguments.get("node", "")
+            if not node:
+                return [TextContent(type="text", text="Node parameter required for neighbors query.")]
+            data = graph.query_neighbors(node, depth=arguments.get("depth", 2))
+            if "error" in data:
+                result = f"❌ {data['error']}"
+                if data.get("suggestions"):
+                    result += f"\n\nDid you mean: {', '.join(data['suggestions'])}?"
+            else:
+                lines = [f"# Neighbors of: {data['info'].get('title', node)}", ""]
+                for layer in data.get("layers", []):
+                    lines.append(f"## Depth {layer['depth']} ({layer['count']} nodes)")
+                    for n in layer["nodes"]:
+                        lines.append(f"- {n['direction']} **{n['title']}** ({n['project']}) `{n['type']}`")
+                    lines.append("")
+                result = "\n".join(lines)
+        elif query_type == "path":
+            source = arguments.get("node", "")
+            target = arguments.get("target", "")
+            if not source or not target:
+                return [TextContent(type="text", text="Both node and target required for path query.")]
+            data = graph.find_path(source, target)
+            if data.get("found"):
+                path_str = " → ".join(p["title"] for p in data["path"])
+                result = f"✅ Path found (length: {data['length']})\n\n{path_str}"
+            else:
+                result = f"❌ {data.get('message', data.get('error', 'No path found'))}"
+        elif query_type == "hubs":
+            stats = graph.get_stats()
+            lines = ["# 🏛️ Hub Pages (Most Connected)", ""]
+            for hub in stats.hubs:
+                lines.append(f"- **{hub['title']}** ({hub['project']}) — {hub['degree']} connections")
+            result = "\n".join(lines)
+        elif query_type == "clusters":
+            data = graph.get_clusters()
+            lines = [f"# 🔮 Knowledge Clusters ({data['total_clusters']} projects)", ""]
+            for cluster in data["clusters"]:
+                lines.append(f"## {cluster['project']} ({cluster['node_count']} nodes, {cluster['total_connections']} connections)")
+                for n in cluster["nodes"]:
+                    lines.append(f"- **{n['title']}** `{n['type']}` — {n['connections']} links")
+                lines.append("")
+            result = "\n".join(lines)
+        else:
+            result = f"Unknown query_type: {query_type}"
+
+        _append_to_log(vault, "query_graph", details=f"type={query_type}")
+        return [TextContent(type="text", text=result)]
+
+    elif name == "extract_patterns":
+        extractor = PatternExtractor(vault)
+        project = arguments.get("project")
+        generate_rules = arguments.get("generate_rules", False)
+
+        if generate_rules:
+            rules = extractor.generate_auto_rules(project)
+            _append_to_log(vault, "extract_patterns", details="Generated auto-rules.md")
+            _regenerate_index(vault)
+            return [TextContent(type="text", text=f"✅ Auto-rules generated:\n\n{rules}")]
+        else:
+            report = extractor.analyze(project)
+            _append_to_log(vault, "extract_patterns", details=f"{report.total_decisions} decisions analyzed")
+            return [TextContent(type="text", text=report.to_markdown())]
 
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
