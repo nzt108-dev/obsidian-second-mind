@@ -1,6 +1,7 @@
 """Indexer module — chunks notes and stores embeddings in ChromaDB.
 
-v0.2.0: Hybrid RAG — Vector + BM25 keyword search + RRF fusion + Cross-Encoder reranking.
+v0.3.0: Hybrid RAG — Vector + BM25 keyword search + RRF fusion + Cross-Encoder reranking
+         + MMR diversity + near-duplicate detection.
 """
 import logging
 import re
@@ -291,6 +292,119 @@ class Reranker:
 
 
 # ---------------------------------------------------------------------------
+# Near-Duplicate Detection
+# ---------------------------------------------------------------------------
+
+def _jaccard_similarity(tokens_a: set[str], tokens_b: set[str]) -> float:
+    """Jaccard similarity between two token sets."""
+    if not tokens_a or not tokens_b:
+        return 0.0
+    intersection = tokens_a & tokens_b
+    union = tokens_a | tokens_b
+    return len(intersection) / len(union)
+
+
+def deduplicate_results(
+    results: list[dict],
+    threshold: float = 0.85,
+) -> list[dict]:
+    """Remove near-duplicate results based on Jaccard token similarity.
+
+    Two results with Jaccard similarity >= threshold are considered duplicates.
+    Keeps the first (higher-scored) version.
+    """
+    if not results:
+        return []
+
+    deduped = []
+    seen_token_sets: list[set[str]] = []
+
+    for result in results:
+        tokens = set(_tokenize(result["text"]))
+        is_dup = False
+        for seen in seen_token_sets:
+            if _jaccard_similarity(tokens, seen) >= threshold:
+                is_dup = True
+                break
+        if not is_dup:
+            deduped.append(result)
+            seen_token_sets.append(tokens)
+
+    if len(results) != len(deduped):
+        logger.info(f"Dedup: {len(results)} -> {len(deduped)} results (removed {len(results) - len(deduped)} near-duplicates)")
+
+    return deduped
+
+
+# ---------------------------------------------------------------------------
+# MMR (Maximal Marginal Relevance) Diversity
+# ---------------------------------------------------------------------------
+
+def mmr_diversify(
+    results: list[dict],
+    lambda_param: float = 0.7,
+    top_k: int = 5,
+) -> list[dict]:
+    """Maximal Marginal Relevance: balance relevance with diversity.
+
+    Prevents returning 10 copies of your loudest thought.
+    Uses Jaccard similarity on tokens for O(n²) but fast at small scale.
+
+    lambda_param: 0.0 = full diversity, 1.0 = full relevance.
+    """
+    if len(results) <= top_k:
+        return results
+
+    # Pre-tokenize all results
+    token_sets = [set(_tokenize(r["text"])) for r in results]
+
+    # Get relevance scores (use rerank_score, rrf_score, or score)
+    def _get_score(r: dict) -> float:
+        return r.get("rerank_score", r.get("rrf_score", r.get("score", 0)))
+
+    # Normalize scores to [0, 1]
+    scores = [_get_score(r) for r in results]
+    max_score = max(scores) if scores else 1.0
+    min_score = min(scores) if scores else 0.0
+    score_range = max_score - min_score if max_score != min_score else 1.0
+    norm_scores = [(s - min_score) / score_range for s in scores]
+
+    selected_indices: list[int] = []
+    remaining_indices = list(range(len(results)))
+
+    # Always pick the most relevant first
+    best_idx = max(remaining_indices, key=lambda i: norm_scores[i])
+    selected_indices.append(best_idx)
+    remaining_indices.remove(best_idx)
+
+    while len(selected_indices) < top_k and remaining_indices:
+        best_mmr_score = -float("inf")
+        best_candidate = remaining_indices[0]
+
+        for cand_idx in remaining_indices:
+            # Relevance component
+            relevance = norm_scores[cand_idx]
+
+            # Diversity component: max similarity to any already selected
+            max_sim = 0.0
+            for sel_idx in selected_indices:
+                sim = _jaccard_similarity(token_sets[cand_idx], token_sets[sel_idx])
+                max_sim = max(max_sim, sim)
+
+            # MMR score
+            mmr_score = lambda_param * relevance - (1.0 - lambda_param) * max_sim
+
+            if mmr_score > best_mmr_score:
+                best_mmr_score = mmr_score
+                best_candidate = cand_idx
+
+        selected_indices.append(best_candidate)
+        remaining_indices.remove(best_candidate)
+
+    return [results[i] for i in selected_indices]
+
+
+# ---------------------------------------------------------------------------
 # ChromaDB + Hybrid Index
 # ---------------------------------------------------------------------------
 
@@ -461,9 +575,23 @@ class VaultIndex:
 
         # --- Stage 4: Cross-Encoder Reranking ---
         if use_reranking and fused:
-            fused = self._reranker.rerank(query, fused, top_k=n_results)
+            fused = self._reranker.rerank(query, fused, top_k=max(n_results * 2, len(fused)))
             for r in fused:
                 r["search_method"] += "+rerank"
+
+        # --- Stage 5: Near-duplicate detection ---
+        fused = deduplicate_results(fused, threshold=self.settings.dedup_threshold)
+
+        # --- Stage 6: MMR Diversity ---
+        use_mmr = self.settings.mmr_diversity
+        if use_mmr and len(fused) > n_results:
+            fused = mmr_diversify(
+                fused,
+                lambda_param=self.settings.mmr_lambda,
+                top_k=n_results,
+            )
+            for r in fused:
+                r["search_method"] = r.get("search_method", "") + "+mmr"
 
         # Format final output
         output = []

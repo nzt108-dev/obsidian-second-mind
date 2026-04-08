@@ -61,6 +61,26 @@ class Settings(BaseSettings):
         description="Over-fetch multiplier for hybrid retrieval (fetch N*multiplier, rerank to N).",
     )
 
+    # --- MMR Diversity Settings ---
+    mmr_diversity: bool = Field(
+        default=True,
+        description="Enable MMR diversity reranking to avoid returning near-duplicate results.",
+    )
+    mmr_lambda: float = Field(
+        default=0.7,
+        description="MMR lambda: 0.0 = full diversity, 1.0 = full relevance. 0.7 is a good balance.",
+    )
+    dedup_threshold: float = Field(
+        default=0.85,
+        description="Jaccard similarity threshold for near-duplicate detection (0-1).",
+    )
+
+    # --- Lint Settings ---
+    lint_stale_days: int = Field(
+        default=90,
+        description="Notes not updated for this many days are flagged as stale.",
+    )
+
     model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env"}
 
 

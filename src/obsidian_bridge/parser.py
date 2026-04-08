@@ -75,7 +75,7 @@ def parse_note(file_path: Path, vault_path: Path) -> Optional[Note]:
     if isinstance(fm_tags, str):
         fm_tags = [t.strip() for t in fm_tags.split(",")]
     inline_tags = _extract_inline_tags(post.content)
-    all_tags = list(set(fm_tags + inline_tags))
+    all_tags = list(set(str(t) for t in fm_tags + inline_tags))
 
     # Determine project from frontmatter or folder structure
     project = fm.get("project", "")
