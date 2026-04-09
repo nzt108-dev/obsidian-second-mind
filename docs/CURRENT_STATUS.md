@@ -2,7 +2,7 @@
 > Last updated: 2026-04-09
 
 ## Version / Build Status
-- **Version**: 0.9.0
+- **Version**: 1.0.0
 - **Status**: ✅ All systems operational
 - **ruff**: All checks passed
 - **pytest**: 18/18 passed
@@ -53,12 +53,20 @@
 - MCP tools: save_session, load_session, get_enhanced_wakeup
 - CLI: `save`, `emergency-save`
 
+### Ultimate Brain (v1.0)
+- Complete README with Mermaid architecture diagram
+- Full API reference (23 MCP tools, 14 CLI commands)
+- CHANGELOG.md documenting all versions v0.1 → v1.0
+- PyPI-ready packaging (Beta status, URLs, classifiers)
+- Git tag v1.0.0
+
 ## Known Issues / Blockers
 - None critical
 - Whisper/OCR require separate installs (`pip install openai-whisper`, `brew install tesseract`)
 
 ## What's Next
-- **v1.0.0 — Ultimate Brain**: Polish, README rewrite, benchmarks, PyPI publish
+- **v1.1.0**: Scheduled jobs (auto-radar, auto-ingest on schedule)
+- **v1.2.0**: Multi-vault support
 
 ## Key Files
 - `src/obsidian_bridge/mcp_server.py` — MCP server (1400+ lines, 23+ tools)
