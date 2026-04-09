@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obsidian-second-mind"
-version = "1.0.0"
+version = "1.1.0"
 description = "Turn your Obsidian vault into a living Second Brain for AI coding agents via MCP"
 readme = "README.md"
 license = "MIT"

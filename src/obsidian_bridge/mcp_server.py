@@ -1,5 +1,7 @@
 """MCP Server for Obsidian Second Mind.
 
+v1.1.0: Auto Architect — scan_architecture tool (code → Mermaid diagrams).
+
 v1.0.0: Ultimate Brain (release).
 - Path traversal protection on get_note / update_note
 - Settings caching with lru_cache
@@ -52,6 +54,7 @@ from obsidian_bridge.scout import DependencyChecker, SessionAnalyzer, TechRadar
 from obsidian_bridge.wakeup import WakeupContext
 from obsidian_bridge.ingest import IngestPipeline, IngestSource
 from obsidian_bridge.auto_radar import AutoRadar, notify_telegram as radar_notify
+from obsidian_bridge.architect import scan_and_save as scan_architecture
 from obsidian_bridge.graph import (
     KnowledgeGraph,
     TemporalKnowledgeGraph,
@@ -815,6 +818,23 @@ async def list_tools() -> list[Tool]:
                 },
             },
         ),
+        # --- v1.1.0 Auto Architect ---
+        Tool(
+            name="scan_architecture",
+            description="Scan a project's source code and generate an architecture map with "
+                        "Mermaid dependency diagrams. Saves the map to vault as architecture-map.md. "
+                        "Uses AST parsing — fast, no LLM needed.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project slug to scan (must exist on local filesystem)",
+                    },
+                },
+                "required": ["project"],
+            },
+        ),
     ]
 
 
@@ -1404,6 +1424,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             project_base_dirs=settings.project_base_dirs,
         )
         return [TextContent(type="text", text=context)]
+
+    elif name == "scan_architecture":
+        project = arguments["project"]
+        settings = get_settings()
+        result = scan_architecture(
+            vault_path=vault,
+            project=project,
+            project_base_dirs=settings.project_base_dirs,
+        )
+        _append_to_log(vault, "scan_architecture", project=project)
+        _regenerate_index(vault)
+        return [TextContent(type="text", text=result)]
 
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
