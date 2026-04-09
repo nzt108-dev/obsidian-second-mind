@@ -11,6 +11,7 @@ from obsidian_bridge.models import Note
 
 # Patterns for Obsidian-specific syntax
 WIKILINK_PATTERN = re.compile(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]")
+WIKILINK_PATTERN_SIMPLE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")  # no alias capture
 EMBED_PATTERN = re.compile(r"!\[\[([^\]]+)\]\]")
 TAG_INLINE_PATTERN = re.compile(r"(?:^|\s)#([a-zA-Z0-9_-]+)", re.MULTILINE)
 

@@ -164,11 +164,24 @@ def add_project(ctx, slug):
     today = date.today().isoformat()
 
     # Create default files
+    title = slug.title()
     templates = {
-        "prd.md": ("prd", f"# {slug.title()} — Product Requirements\n\n## Overview\n\n## Core Features\n"),
-        "architecture.md": ("architecture", f"# {slug.title()} — Architecture\n\n## Layers\n\n## Tech Stack\n"),
-        "api-rules.md": ("api", f"# {slug.title()} — API Rules\n\n## Endpoints\n\n## Conventions\n"),
-        "ui-guidelines.md": ("guidelines", f"# {slug.title()} — UI Guidelines\n\n## Components\n\n## Patterns\n"),
+        "prd.md": (
+            "prd",
+            f"# {title} — Product Requirements\n\n## Overview\n\n## Core Features\n",
+        ),
+        "architecture.md": (
+            "architecture",
+            f"# {title} — Architecture\n\n## Layers\n\n## Tech Stack\n",
+        ),
+        "api-rules.md": (
+            "api",
+            f"# {title} — API Rules\n\n## Endpoints\n\n## Conventions\n",
+        ),
+        "ui-guidelines.md": (
+            "guidelines",
+            f"# {title} — UI Guidelines\n\n## Components\n\n## Patterns\n",
+        ),
     }
 
     for filename, (note_type, content) in templates.items():

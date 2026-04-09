@@ -903,10 +903,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         project_dir = vault / project
         project_dir.mkdir(parents=True, exist_ok=True)
 
-        # Generate filename
+        # Generate filename (with collision protection)
         filename = title.lower().replace(" ", "-").replace("/", "-")
         filename = "".join(c for c in filename if c.isalnum() or c in "-_")
         file_path = project_dir / f"{filename}.md"
+        counter = 1
+        while file_path.exists():
+            file_path = project_dir / f"{filename}-{counter}.md"
+            counter += 1
 
         # Build frontmatter
         today = date.today().isoformat()

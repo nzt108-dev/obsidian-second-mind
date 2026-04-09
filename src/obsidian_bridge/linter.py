@@ -11,10 +11,9 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 
-from obsidian_bridge.parser import scan_vault
+from obsidian_bridge.parser import scan_vault, WIKILINK_PATTERN_SIMPLE
 
-# Patterns
-WIKILINK_PATTERN = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
+
 TODO_PATTERN = re.compile(r"(?:TODO|FIXME|HACK|XXX|WIP)\b", re.IGNORECASE)
 CONCEPT_MENTION_PATTERN = re.compile(
     r"\b(Supabase|ChromaDB|Flutter|Next\.js|Firebase|Vercel|Docker|Redis|PostgreSQL"
@@ -155,7 +154,7 @@ class VaultLinter:
         # Count inbound links for each note
         inbound_count: Counter = Counter()
         for note in notes:
-            links = WIKILINK_PATTERN.findall(note.raw_content)
+            links = WIKILINK_PATTERN_SIMPLE.findall(note.raw_content)
             for link_target in links:
                 # Link target might be "project/note" or just "note"
                 target_parts = link_target.split("/")
@@ -212,7 +211,7 @@ class VaultLinter:
             existing_stems.add(note.path.stem.lower())
 
         for note in notes:
-            links = WIKILINK_PATTERN.findall(note.raw_content)
+            links = WIKILINK_PATTERN_SIMPLE.findall(note.raw_content)
             for link_target in links:
                 target_parts = link_target.split("/")
                 target_stem = target_parts[-1].lower().replace(".md", "")

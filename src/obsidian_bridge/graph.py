@@ -4,16 +4,14 @@ v0.4.0: Builds a NetworkX graph from vault WikiLinks.
 Supports neighbor queries, path finding, hub detection, and cluster analysis.
 """
 import logging
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from obsidian_bridge.parser import scan_vault
+from obsidian_bridge.parser import scan_vault, WIKILINK_PATTERN_SIMPLE
 
 logger = logging.getLogger(__name__)
 
-WIKILINK_PATTERN = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 
 
 @dataclass
@@ -60,7 +58,7 @@ class KnowledgeGraph:
         # Build edges from WikiLinks
         for note in notes:
             source = note.path.stem.lower()
-            links = WIKILINK_PATTERN.findall(note.raw_content)
+            links = WIKILINK_PATTERN_SIMPLE.findall(note.raw_content)
             for link_target in links:
                 parts = link_target.split("/")
                 target = parts[-1].lower().replace(".md", "")

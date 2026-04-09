@@ -14,7 +14,7 @@ from pathlib import Path
 
 import frontmatter as fm_lib
 
-from obsidian_bridge.parser import get_projects, parse_note
+from obsidian_bridge.parser import get_projects, parse_note, WIKILINK_PATTERN_SIMPLE
 
 logger = logging.getLogger(__name__)
 
@@ -80,28 +80,14 @@ class IngestReport:
 # Entity Extraction (regex-based, no LLM)
 # ---------------------------------------------------------------------------
 
-# Known tech terms (expandable)
-TECH_ENTITIES = {
-    # Frameworks
-    "flutter", "react", "nextjs", "next.js", "vue", "svelte", "django", "flask",
-    "fastapi", "express", "nestjs", "spring",
-    # Languages
-    "python", "typescript", "javascript", "dart", "rust", "go", "kotlin", "swift",
-    # Databases
-    "postgresql", "postgres", "mysql", "sqlite", "mongodb", "redis", "supabase",
-    "firebase", "turso",
-    # Auth
-    "clerk", "auth0", "firebase auth", "supabase auth",
-    # Platforms
-    "vercel", "aws", "gcp", "docker", "kubernetes",
-    # AI/ML
-    "openai", "gpt", "claude", "gemini", "whisper", "langchain", "chromadb",
-    # Tools
-    "obsidian", "telegram", "notion", "github", "vscode",
-}
+# Known tech terms — import canonical list from fact_extractor
+try:
+    from obsidian_bridge.fact_extractor import KNOWN_TECH as TECH_ENTITIES
+except ImportError:
+    TECH_ENTITIES = set()  # fallback if fact_extractor not available
 
 # Pattern for WikiLink references [[Page Name]]
-WIKILINK_PATTERN = re.compile(r"\[\[([^\]]+)\]\]")
+WIKILINK_PATTERN = WIKILINK_PATTERN_SIMPLE
 
 # Pattern for project slugs (lowercase-with-dashes)
 PROJECT_SLUG_PATTERN = re.compile(r"\b([a-z][a-z0-9\-]{2,30})\b")

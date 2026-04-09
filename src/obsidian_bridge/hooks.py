@@ -186,9 +186,11 @@ class SessionHooks:
         snapshot = hooks.load_last_session("brieftube")
     """
 
-    def __init__(self, vault_path: Path, project_base_dirs: list[str] | None = None):
+    def __init__(self, vault_path: Path, project_base_dirs: list[str] | None = None,
+                 max_snapshots: int = 50):
         self.vault = vault_path
         self.project_base_dirs = project_base_dirs or []
+        self.max_snapshots = max_snapshots
         self._memory_dir = vault_path / "_memory"
         self._memory_dir.mkdir(parents=True, exist_ok=True)
 
@@ -236,6 +238,9 @@ class SessionHooks:
 
         # 5. Update wake-up cache
         self._update_wakeup_cache(project, snapshot)
+
+        # 6. Prune old snapshots to prevent unbounded growth
+        self._prune_old_snapshots(project)
 
         logger.info(f"Session saved: {project} at {snapshot.timestamp}")
         return snapshot
@@ -435,6 +440,31 @@ class SessionHooks:
             encoding="utf-8",
         )
         logger.info(f"Wake-up cache updated for {project}")
+
+    def _prune_old_snapshots(self, project: str):
+        """Remove old session archives beyond max_snapshots limit.
+
+        Keeps the N most recent snapshots per project to prevent
+        unbounded growth of _memory/ directory.
+        """
+        pattern = f"{project}-*.json"
+        archives = sorted(
+            (f for f in self._memory_dir.glob(pattern)
+             if not f.name.endswith("-latest.json")
+             and not f.name.startswith("wakeup-")),
+            reverse=True,  # newest first
+        )
+
+        if len(archives) <= self.max_snapshots:
+            return
+
+        # Remove oldest files
+        for old_file in archives[self.max_snapshots:]:
+            try:
+                old_file.unlink()
+                logger.debug(f"Pruned old snapshot: {old_file.name}")
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------
