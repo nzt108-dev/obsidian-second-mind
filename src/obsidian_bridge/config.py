@@ -91,6 +91,16 @@ class Settings(BaseSettings):
         description="Decay rate. 0.005 = half-life ~139 days. Higher = faster decay.",
     )
 
+    # --- Scout / Intelligence Settings ---
+    project_base_dirs: list[str] = Field(
+        default_factory=lambda: [str(Path.home() / "Projects")],
+        description="Base directories where projects live on local filesystem.",
+    )
+    scout_http_timeout: float = Field(
+        default=15.0,
+        description="HTTP timeout for Tech Radar and Dependency Watch requests.",
+    )
+
     model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env"}
 
 

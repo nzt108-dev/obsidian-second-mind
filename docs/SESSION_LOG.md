@@ -130,3 +130,48 @@ None
 3. Unit tests for graph + patterns + decay
 4. Consider PyPI publish
 
+---
+
+## Session 2026-04-08 — Intelligence Layer v0.5.0
+
+### What Was Done
+1. **Discussed Context7 MCP** — evaluated vs our system, decided not needed
+2. **Proposed 4 intelligence modules** for Second Mind:
+   - Session Intelligence (repeating problem analysis)
+   - Tech Radar (new tools scanning)
+   - Dependency Watch (outdated deps detection)
+   - Community Pulse (deferred to future)
+3. **Created Mission Control prompt** for architect-portfolio upgrade (PWA, Agent Hub, Mobile layout)
+4. **New module: `scout.py`** — 3 analyzers in one module:
+   - `SessionAnalyzer` — parses session logs, finds repeating issues, extracts workarounds, generates recommendations
+   - `TechRadar` — scans npm + GitHub for new MCP/AI/devtools, scores relevance to our stack
+   - `DependencyChecker` — checks npm/pip/flutter deps against public registries, classifies updates
+5. **3 new MCP tools** added to mcp_server.py: `analyze_sessions`, `scout_tools`, `check_dependencies`
+6. **Config updated** — added `project_base_dirs` and `scout_http_timeout` settings
+7. **18 unit tests** created in `tests/test_scout.py` — all passing
+8. **Version bump** 0.4.0 → 0.5.0, added `httpx` dependency
+9. **Ruff lint** — all clean
+
+### What Failed / Issues
+- Python env mismatch: system Python 3.12 (homebrew) vs Xcode Python 3.9 — had to install packages to 3.12 with --break-system-packages
+- ruff not found in PATH — used direct path `/Users/nzt108/Library/Python/3.9/bin/ruff`
+
+### Git Commits
+- (pending push)
+
+### Files Changed
+- `src/obsidian_bridge/scout.py` — NEW (3 analyzers)
+- `src/obsidian_bridge/mcp_server.py` — +3 tools, updated docstring
+- `src/obsidian_bridge/config.py` — +2 scout settings
+- `pyproject.toml` — version 0.5.0, +httpx dep
+- `tests/test_scout.py` — NEW (18 tests)
+- `tests/__init__.py` — NEW
+- `docs/CURRENT_STATUS.md` — updated
+- `docs/SESSION_LOG.md` — updated
+- `.agent/prompts/mission-control.md` — NEW (prompt for architect-portfolio)
+
+### Next Session — What To Do First
+1. `/push` — commit and push v0.5.0
+2. Test MCP tools in real session (analyze_sessions, scout_tools, check_dependencies)
+3. Dashboard v2 with Tech Radar visualization
+4. Community Pulse module

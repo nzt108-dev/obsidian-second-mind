@@ -1,5 +1,10 @@
 """MCP Server for Obsidian Second Mind.
 
+v0.5.0: Intelligence Layer.
+- Session Intelligence: analyze_sessions tool (repeating problems, workarounds)
+- Tech Radar: scout_tools tool (new MCP servers, AI tools, devtools)
+- Dependency Watch: check_dependencies tool (outdated packages, security patches)
+
 v0.4.0: Adaptive Brain.
 - Knowledge graph: query_graph tool (neighbors, paths, hubs, clusters)
 - Pattern extraction: extract_patterns tool (auto-rules from decision outcomes)
@@ -25,6 +30,7 @@ from obsidian_bridge.indexer import VaultIndex
 from obsidian_bridge.linter import VaultLinter
 from obsidian_bridge.parser import get_project_notes, get_projects, parse_note, scan_vault
 from obsidian_bridge.patterns import PatternExtractor
+from obsidian_bridge.scout import DependencyChecker, SessionAnalyzer, TechRadar
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +489,49 @@ async def list_tools() -> list[Tool]:
                 },
             },
         ),
+        # --- v0.5.0 Intelligence Layer ---
+        Tool(
+            name="analyze_sessions",
+            description="Analyze session logs across projects to find repeating problems, common failure patterns, and reusable workarounds. Use this to identify areas that need better tooling or documentation.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Optional: analyze only this project's sessions",
+                    },
+                },
+            },
+        ),
+        Tool(
+            name="scout_tools",
+            description="Scan the internet for new tools, MCP servers, and developer utilities relevant to our tech stack. Categories: 'mcp', 'ai', 'devtools', 'all'.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "description": "Category to scan: 'mcp', 'ai', 'devtools', or 'all'",
+                        "enum": ["mcp", "ai", "devtools", "all"],
+                        "default": "all",
+                    },
+                },
+            },
+        ),
+        Tool(
+            name="check_dependencies",
+            description="Check a project's dependencies (npm/pip/flutter) for outdated packages and security patches. Requires the project to exist on local filesystem.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project slug to check dependencies for",
+                    },
+                },
+                "required": ["project"],
+            },
+        ),
     ]
 
 
@@ -747,6 +796,52 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             report = extractor.analyze(project)
             _append_to_log(vault, "extract_patterns", details=f"{report.total_decisions} decisions analyzed")
             return [TextContent(type="text", text=report.to_markdown())]
+
+    # --- v0.5.0 Intelligence Layer ---
+
+    elif name == "analyze_sessions":
+        analyzer = SessionAnalyzer(vault)
+        project = arguments.get("project")
+        report = analyzer.analyze(project)
+        _append_to_log(
+            vault, "analyze_sessions",
+            project=project or "all",
+            details=f"{report.total_sessions} sessions, {report.total_issues} issues, "
+                    f"{len(report.repeating_issues)} repeating patterns",
+        )
+        return [TextContent(type="text", text=report.to_markdown())]
+
+    elif name == "scout_tools":
+        radar = TechRadar(vault)
+        category = arguments.get("category", "all")
+        report = await radar.scan(category)
+        _append_to_log(
+            vault, "scout_tools",
+            details=f"category={category}, found={report.tools_found}",
+        )
+        return [TextContent(type="text", text=report.to_markdown())]
+
+    elif name == "check_dependencies":
+        project = arguments["project"]
+        settings = get_settings()
+        # Build project path mapping from base dirs
+        project_paths = {}
+        for base_dir in settings.project_base_dirs:
+            base = Path(base_dir)
+            if base.exists():
+                for d in base.iterdir():
+                    if d.is_dir():
+                        project_paths[d.name] = str(d)
+
+        checker = DependencyChecker(vault, project_paths)
+        report = await checker.check(project)
+        _append_to_log(
+            vault, "check_dependencies",
+            project=project,
+            details=f"manager={report.package_manager}, "
+                    f"total={report.total_deps}, outdated={len(report.outdated)}",
+        )
+        return [TextContent(type="text", text=report.to_markdown())]
 
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
