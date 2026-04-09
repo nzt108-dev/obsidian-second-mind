@@ -1,5 +1,18 @@
 """MCP Server for Obsidian Second Mind.
 
+v0.8.0: Temporal Brain.
+- Temporal KG: kg_add_fact, kg_invalidate, kg_timeline tools
+- Contradiction detection: kg_check_contradictions tool
+
+v0.7.0: Cascade Intelligence.
+- Cascade ingest: ingest_source tool (one source → N wiki updates)
+- Auto radar: auto_radar_scan tool (diff-based scanning + Telegram alerts)
+
+v0.6.0: Capture & Recall.
+- Wake-up context: get_wakeup_context tool (~200 token critical facts summary)
+- Query write-back: save_insight tool (save valuable answers back to wiki)
+- Telegram capture bot integration (separate module)
+
 v0.5.0: Intelligence Layer.
 - Session Intelligence: analyze_sessions tool (repeating problems, workarounds)
 - Tech Radar: scout_tools tool (new MCP servers, AI tools, devtools)
@@ -25,12 +38,20 @@ from mcp.types import (
 )
 
 from obsidian_bridge.config import get_settings
-from obsidian_bridge.graph import KnowledgeGraph
 from obsidian_bridge.indexer import VaultIndex
 from obsidian_bridge.linter import VaultLinter
 from obsidian_bridge.parser import get_project_notes, get_projects, parse_note, scan_vault
 from obsidian_bridge.patterns import PatternExtractor
 from obsidian_bridge.scout import DependencyChecker, SessionAnalyzer, TechRadar
+from obsidian_bridge.wakeup import WakeupContext
+from obsidian_bridge.ingest import IngestPipeline, IngestSource
+from obsidian_bridge.auto_radar import AutoRadar, notify_telegram as radar_notify
+from obsidian_bridge.graph import (
+    KnowledgeGraph,
+    TemporalKnowledgeGraph,
+    ContradictionDetector,
+)
+from obsidian_bridge.fact_extractor import FactExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -532,6 +553,198 @@ async def list_tools() -> list[Tool]:
                 "required": ["project"],
             },
         ),
+        # --- v0.6.0: Capture & Recall ---
+        Tool(
+            name="get_wakeup_context",
+            description="Get compact wake-up context (~200 tokens) with critical facts: "
+                        "active projects, recent decisions, inbox items, blockers. "
+                        "Call this FIRST when starting a new session for instant context.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "focus_project": {
+                        "type": "string",
+                        "description": "Optional: prioritize this project in the summary",
+                    },
+                },
+            },
+        ),
+        Tool(
+            name="save_insight",
+            description="Save a valuable search answer or synthesis back into the wiki. "
+                        "Use when a query produces insights worth preserving permanently. "
+                        "Creates a compounding knowledge loop: sources → wiki → queries → insights → wiki.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project slug for the insight",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title for the insight note",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The insight or synthesis to save",
+                    },
+                    "source_query": {
+                        "type": "string",
+                        "description": "The search query that led to this insight",
+                    },
+                    "note_type": {
+                        "type": "string",
+                        "enum": ["synthesis", "research", "concept"],
+                        "default": "synthesis",
+                        "description": "Type of insight note (default: synthesis)",
+                    },
+                },
+                "required": ["project", "title", "content"],
+            },
+        ),
+        # --- v0.7.0: Cascade Intelligence ---
+        Tool(
+            name="ingest_source",
+            description="Cascade ingest: process a new source (text, URL, note) and "
+                        "automatically update ALL related wiki pages. Creates primary note, "
+                        "adds cross-references to related pages, creates concept stubs for "
+                        "new entities. A single ingest can touch 5-15 wiki pages.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "Source content (text, article, idea, etc.)",
+                    },
+                    "source_type": {
+                        "type": "string",
+                        "enum": ["text", "url", "note"],
+                        "default": "text",
+                        "description": "Type of source being ingested",
+                    },
+                    "project": {
+                        "type": "string",
+                        "default": "inbox",
+                        "description": "Target project (default: inbox)",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Optional title for the note",
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "URL if source_type is 'url'",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional tags for the note",
+                    },
+                },
+                "required": ["content"],
+            },
+        ),
+        Tool(
+            name="auto_radar_scan",
+            description="Run automated Tech Radar scan with diff tracking. Compares with "
+                        "previous scan, saves diff report to vault, and optionally sends "
+                        "Telegram alert if important new tools are found.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["mcp", "ai", "devtools", "all"],
+                        "default": "all",
+                        "description": "Category to scan",
+                    },
+                    "notify": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Send Telegram alert for important findings (default: true)",
+                    },
+                },
+            },
+        ),
+        # --- v0.8.0: Temporal Brain ---
+        Tool(
+            name="kg_add_fact",
+            description="Add a temporal fact to the knowledge graph. Facts have validity windows "
+                        "(valid_from/valid_to). Automatically detects contradictions with existing facts "
+                        "and auto-resolves them by invalidating the old fact.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "subject": {
+                        "type": "string",
+                        "description": "Entity the fact is about (e.g. 'brieftube')",
+                    },
+                    "predicate": {
+                        "type": "string",
+                        "description": "Relationship type (e.g. 'uses_auth', 'uses_db', 'deploys_to')",
+                    },
+                    "object": {
+                        "type": "string",
+                        "description": "Value (e.g. 'clerk', 'postgresql', 'vercel')",
+                    },
+                    "source_note": {
+                        "type": "string",
+                        "description": "Path to the note establishing this fact",
+                    },
+                    "valid_from": {
+                        "type": "string",
+                        "description": "Date when fact became true (YYYY-MM-DD, default: today)",
+                    },
+                },
+                "required": ["subject", "predicate", "object"],
+            },
+        ),
+        Tool(
+            name="kg_invalidate",
+            description="Mark a fact as no longer valid. Use when a technology/approach has been replaced.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string"},
+                    "predicate": {"type": "string"},
+                    "object": {"type": "string"},
+                    "ended": {
+                        "type": "string",
+                        "description": "Date when fact stopped being true (YYYY-MM-DD, default: today)",
+                    },
+                },
+                "required": ["subject", "predicate", "object"],
+            },
+        ),
+        Tool(
+            name="kg_timeline",
+            description="Get chronological history of ALL facts about an entity, including expired ones. "
+                        "Shows what was true when — tech stack evolution, decision history, etc.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "entity": {
+                        "type": "string",
+                        "description": "Entity to get timeline for (e.g. 'brieftube')",
+                    },
+                    "as_of": {
+                        "type": "string",
+                        "description": "Optional: query facts valid at this date (YYYY-MM-DD)",
+                    },
+                },
+                "required": ["entity"],
+            },
+        ),
+        Tool(
+            name="kg_check_contradictions",
+            description="Check the entire knowledge graph for contradictions — facts that conflict with each other. "
+                        "Returns a report grouped by severity (critical/warning/info).",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
     ]
 
 
@@ -651,7 +864,24 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         _append_to_log(vault, "create_note", project, title, note_type, tags)
         _regenerate_index(vault)
 
-        return [TextContent(type="text", text=f"✅ Note created: {file_path.relative_to(vault)}")]
+        result = f"✅ Note created: {file_path.relative_to(vault)}"
+
+        # v0.8.0: Auto-extract temporal facts from decisions and architecture notes
+        if note_type in ("decision", "architecture", "note", "research"):
+            try:
+                extractor = FactExtractor(vault)
+                fact_report = extractor.extract_and_apply(
+                    text=content,
+                    project=project,
+                    source_note=str(file_path.relative_to(vault)),
+                    valid_from=today,
+                )
+                if fact_report.facts_added:
+                    result += "\n\n" + fact_report.to_markdown()
+            except Exception as e:
+                logger.warning(f"Auto fact extraction failed: {e}")
+
+        return [TextContent(type="text", text=result)]
 
     elif name == "update_note":
         note_path = vault / arguments["path"]
@@ -842,6 +1072,219 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     f"total={report.total_deps}, outdated={len(report.outdated)}",
         )
         return [TextContent(type="text", text=report.to_markdown())]
+
+    elif name == "get_wakeup_context":
+        settings = get_settings()
+        wakeup = WakeupContext(
+            vault_path=vault,
+            project_base_dirs=settings.project_base_dirs,
+        )
+        context = wakeup.generate(
+            focus_project=arguments.get("focus_project", ""),
+        )
+        _append_to_log(vault, "wakeup_context")
+        return [TextContent(type="text", text=context)]
+
+    elif name == "save_insight":
+        project = arguments["project"]
+        title = arguments["title"]
+        content = arguments["content"]
+        source_query = arguments.get("source_query", "")
+        note_type = arguments.get("note_type", "synthesis")
+
+        # Enrich content with write-back metadata
+        enriched = content
+        if source_query:
+            enriched = f"> 🔄 Write-back from query: *{source_query}*\n\n{content}"
+
+        # Create project directory if needed
+        project_dir = vault / project
+        project_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate filename
+        filename = title.lower().replace(" ", "-").replace("/", "-")
+        filename = "".join(c for c in filename if c.isalnum() or c in "-_")
+        file_path = project_dir / f"{filename}.md"
+
+        today = date.today().isoformat()
+        tags = ["write-back", "insight"]
+        if source_query:
+            tags.append("query-derived")
+        tags_yaml = "".join(f'  - "{tag}"\n' for tag in tags)
+
+        fm_content = (
+            f"---\n"
+            f"project: {project}\n"
+            f"type: {note_type}\n"
+            f"tags:\n"
+            f"{tags_yaml}"
+            f"priority: medium\n"
+            f"created: {today}\n"
+            f"updated: {today}\n"
+            f"source_query: \"{source_query}\"\n"
+            f"---\n\n"
+            f"# {title}\n\n"
+            f"{enriched}\n"
+        )
+
+        file_path.write_text(fm_content, encoding="utf-8")
+
+        # Re-index
+        index = _get_index()
+        note = parse_note(file_path, vault)
+        if note:
+            index.index_notes([note])
+
+        _append_to_log(vault, "write-back", project, title, note_type, tags,
+                       details=f"Query: {source_query}" if source_query else "")
+        _regenerate_index(vault)
+
+        return [TextContent(type="text", text=f"✅ Insight saved: {file_path.relative_to(vault)}")]
+
+    # --- v0.7.0: Cascade Intelligence ---
+
+    elif name == "ingest_source":
+        content = arguments["content"]
+        source_type = arguments.get("source_type", "text")
+        project = arguments.get("project", "inbox")
+        title = arguments.get("title", "")
+        url = arguments.get("url", "")
+        tags = arguments.get("tags", [])
+
+        source = IngestSource(
+            content=content,
+            source_type=source_type,
+            project=project,
+            title=title,
+            url=url,
+            tags=tags,
+        )
+
+        index = _get_index()
+        pipeline = IngestPipeline(vault_path=vault, index=index)
+        report = pipeline.ingest(source)
+
+        # v0.8.0: Auto-extract temporal facts
+        try:
+            extractor = FactExtractor(vault)
+            fact_report = extractor.extract_and_apply(
+                text=content,
+                project=project,
+                source_note=report.primary_note,
+            )
+        except Exception as e:
+            logger.warning(f"Auto fact extraction during ingest failed: {e}")
+            fact_report = None
+
+        # Re-generate index.md
+        _regenerate_index(vault)
+
+        result = report.to_markdown()
+        if fact_report and fact_report.facts_added:
+            result += "\n" + fact_report.to_markdown()
+
+        return [TextContent(type="text", text=result)]
+
+    elif name == "auto_radar_scan":
+
+        category = arguments.get("category", "all")
+        should_notify = arguments.get("notify", True)
+
+        auto_radar = AutoRadar(vault)
+        diff = await auto_radar.run_scan(category)
+
+        # Send Telegram notification if enabled and there are findings
+        notification_status = ""
+        if should_notify and diff.has_important_changes:
+            settings = get_settings()
+            if settings.telegram_bot_token and settings.telegram_allowed_users:
+                sent = await radar_notify(
+                    diff=diff,
+                    bot_token=settings.telegram_bot_token,
+                    chat_id=settings.telegram_allowed_users[0],
+                )
+                notification_status = "\n\n📱 Telegram alert sent!" if sent else "\n\n⚠️ Telegram alert failed."
+
+        result = diff.to_markdown() + notification_status
+        return [TextContent(type="text", text=result)]
+
+    # --- v0.8.0: Temporal Brain ---
+
+    elif name == "kg_add_fact":
+        subject = arguments["subject"]
+        predicate = arguments["predicate"]
+        obj = arguments["object"]
+        source_note = arguments.get("source_note", "")
+        valid_from = arguments.get("valid_from", "")
+
+        tkg = TemporalKnowledgeGraph(vault)
+        fact, contradictions = tkg.add_fact(
+            subject=subject,
+            predicate=predicate,
+            obj=obj,
+            valid_from=valid_from,
+            source_note=source_note,
+        )
+
+        result = f"✅ Fact added: {subject} {predicate} {obj} (since {fact.valid_from})"
+        if contradictions:
+            detector = ContradictionDetector(tkg)
+            result += "\n\n" + detector.to_markdown(contradictions)
+
+        return [TextContent(type="text", text=result)]
+
+    elif name == "kg_invalidate":
+        subject = arguments["subject"]
+        predicate = arguments["predicate"]
+        obj = arguments["object"]
+        ended = arguments.get("ended", "")
+
+        tkg = TemporalKnowledgeGraph(vault)
+        found = tkg.invalidate(subject, predicate, obj, ended)
+
+        if found:
+            return [TextContent(type="text", text=f"✅ Fact invalidated: {subject} {predicate} {obj}")]
+        else:
+            return [TextContent(type="text", text=f"⚠️ Fact not found: {subject} {predicate} {obj}")]
+
+    elif name == "kg_timeline":
+        entity = arguments["entity"]
+        as_of = arguments.get("as_of", "")
+
+        tkg = TemporalKnowledgeGraph(vault)
+
+        if as_of:
+            # Query facts at specific date
+            facts = tkg.query_entity(entity, as_of)
+            lines = [f"# ⏱️ Facts about '{entity}' as of {as_of}", ""]
+            for f in facts:
+                status = "✅" if f.is_active else "❌"
+                lines.append(f"{status} {f.predicate}: **{f.object}** (since {f.valid_from})")
+        else:
+            # Full timeline
+            facts = tkg.timeline(entity)
+            lines = [f"# ⏱️ Timeline: {entity}", ""]
+            for f in facts:
+                end = f" → {f.valid_to}" if f.valid_to else " → now"
+                status = "✅" if f.is_active else "❌"
+                lines.append(f"{status} [{f.valid_from}{end}] {f.predicate}: **{f.object}**")
+                if f.source_note:
+                    lines.append(f"  Source: `{f.source_note}`")
+
+        if not facts:
+            lines.append(f"No facts found for '{entity}'.")
+
+        # Append stats
+        lines.append("")
+        lines.append(f"---\n{tkg.to_markdown()}")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    elif name == "kg_check_contradictions":
+        tkg = TemporalKnowledgeGraph(vault)
+        detector = ContradictionDetector(tkg)
+        report = detector.to_markdown()
+        return [TextContent(type="text", text=report)]
 
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 

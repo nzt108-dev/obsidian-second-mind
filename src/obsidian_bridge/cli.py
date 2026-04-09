@@ -219,5 +219,95 @@ def dashboard(ctx, port, no_open):
     run_dashboard(port=port, open_browser=not no_open)
 
 
+@cli.command()
+@click.pass_context
+def bot(ctx):
+    """🤖 Start the Telegram Capture Bot (polling mode)."""
+    console.print("[bold cyan]🤖 Starting Telegram Capture Bot...[/]")
+    console.print(f"Vault: {ctx.obj['settings'].vault_path}")
+
+    try:
+        from obsidian_bridge.telegram_bot import run_bot
+        run_bot()
+    except ValueError as e:
+        console.print(f"[red]❌ {e}[/]")
+        console.print("\n[yellow]Set your bot token:[/]")
+        console.print("  export OBSIDIAN_BRIDGE_TELEGRAM_BOT_TOKEN=your-token-here")
+        console.print("  # or add to .env file")
+
+
+@cli.command()
+@click.argument("text")
+@click.option("--project", "-p", default="inbox", help="Target project (default: inbox)")
+@click.option("--title", "-t", default="", help="Note title")
+@click.option("--type", "source_type", default="text", type=click.Choice(["text", "url", "note"]))
+@click.pass_context
+def ingest(ctx, text, project, title, source_type):
+    """📥 Cascade ingest — one source → N wiki updates."""
+    from obsidian_bridge.ingest import IngestPipeline, IngestSource
+
+    settings = ctx.obj["settings"]
+    vault = settings.vault_path
+
+    console.print(f"[bold cyan]📥 Cascade Ingest → {project}[/]")
+
+    try:
+        from obsidian_bridge.indexer import VaultIndex
+        index = VaultIndex(settings)
+    except Exception:
+        index = None
+        console.print("[yellow]⚠️ Index unavailable, skipping semantic search step[/]")
+
+    source = IngestSource(
+        content=text,
+        source_type=source_type,
+        project=project,
+        title=title,
+    )
+
+    pipeline = IngestPipeline(vault_path=vault, index=index)
+    report = pipeline.ingest(source)
+
+    console.print(f"[green]✅ Done! {len(report.actions)} actions, "
+                   f"{len(report.entities_found)} entities, "
+                   f"{report.cross_references_added} cross-refs[/]")
+    for a in report.actions:
+        icon = {"created": "✅", "updated": "📝", "cross-referenced": "🔗"}.get(a.action, "•")
+        console.print(f"  {icon} {a.action}: {a.path}")
+
+
+@cli.command()
+@click.option("--category", "-c", default="all", type=click.Choice(["mcp", "ai", "devtools", "all"]))
+@click.option("--notify/--no-notify", default=True, help="Send Telegram alert")
+@click.pass_context
+def radar(ctx, category, notify):
+    """📡 Auto Radar — scan + diff + notify."""
+    import asyncio
+    from obsidian_bridge.auto_radar import AutoRadar, notify_telegram
+
+    settings = ctx.obj["settings"]
+    vault = settings.vault_path
+
+    console.print(f"[bold cyan]📡 Auto Radar Scan ({category})...[/]")
+
+    auto = AutoRadar(vault)
+    diff = asyncio.run(auto.run_scan(category))
+
+    console.print("[green]✅ Scan complete![/]")
+    console.print(f"  Current: {diff.total_current} tools")
+    console.print(f"  New high: {len(diff.new_high_relevance)}")
+    console.print(f"  New medium: {len(diff.new_medium_relevance)}")
+
+    if notify and diff.has_important_changes:
+        if settings.telegram_bot_token and settings.telegram_allowed_users:
+            sent = asyncio.run(notify_telegram(
+                diff=diff,
+                bot_token=settings.telegram_bot_token,
+                chat_id=settings.telegram_allowed_users[0],
+            ))
+            if sent:
+                console.print("[green]📱 Telegram alert sent![/]")
+
+
 if __name__ == "__main__":
     cli()

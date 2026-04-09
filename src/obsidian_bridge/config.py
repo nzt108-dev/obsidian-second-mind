@@ -101,6 +101,20 @@ class Settings(BaseSettings):
         description="HTTP timeout for Tech Radar and Dependency Watch requests.",
     )
 
+    # --- Telegram Bot Settings (v0.6.0) ---
+    telegram_bot_token: str = Field(
+        default="",
+        description="Telegram bot token from @BotFather. Required for capture bot.",
+    )
+    telegram_allowed_users: list[int] = Field(
+        default_factory=list,
+        description="Telegram user IDs allowed to use the bot. Empty = allow all.",
+    )
+    telegram_default_project: str = Field(
+        default="inbox",
+        description="Default project for notes captured without @project prefix.",
+    )
+
     model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env"}
 
 

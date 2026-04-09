@@ -32,3 +32,4 @@ htmlcov/
 
 # Setup script (dev only)
 setup_all.sh
+comparison.html
