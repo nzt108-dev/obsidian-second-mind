@@ -157,7 +157,7 @@ None
 - ruff not found in PATH — used direct path `/Users/nzt108/Library/Python/3.9/bin/ruff`
 
 ### Git Commits
-- (pending push)
+- b894ec9 — feat: v0.5.0 — Intelligence Layer
 
 ### Files Changed
 - `src/obsidian_bridge/scout.py` — NEW (3 analyzers)
