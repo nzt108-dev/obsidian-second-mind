@@ -2,7 +2,7 @@
 > Last updated: 2026-04-09
 
 ## Version / Build Status
-- **Version**: 0.8.0
+- **Version**: 0.9.0
 - **Status**: ✅ All systems operational
 - **ruff**: All checks passed
 - **pytest**: 18/18 passed
@@ -45,16 +45,24 @@
 - 10 tech categories, 80+ technologies
 - MCP tools: kg_add_fact, kg_invalidate, kg_timeline, kg_check_contradictions
 
+### Agent Memory (v0.9)
+- Session save/load (git state, decisions, next steps → JSON + vault note)
+- Emergency save (fast context dump before session loss)
+- Enhanced wake-up (standard + session memory + Temporal KG)
+- Pre-computed wake-up cache in `_memory/`
+- MCP tools: save_session, load_session, get_enhanced_wakeup
+- CLI: `save`, `emergency-save`
+
 ## Known Issues / Blockers
 - None critical
 - Whisper/OCR require separate installs (`pip install openai-whisper`, `brew install tesseract`)
 
 ## What's Next
-- **v0.9.0 — Agent Memory**: Auto-save hooks, emergency save, session continuity
-- **v1.0.0 — Ultimate Brain**: Full integration, dashboard, self-maintenance
+- **v1.0.0 — Ultimate Brain**: Polish, README rewrite, benchmarks, PyPI publish
 
 ## Key Files
-- `src/obsidian_bridge/mcp_server.py` — MCP server (1300+ lines, 20+ tools)
+- `src/obsidian_bridge/mcp_server.py` — MCP server (1400+ lines, 23+ tools)
+- `src/obsidian_bridge/hooks.py` — Agent Memory (session save/load/emergency)
 - `src/obsidian_bridge/graph.py` — Knowledge Graph + Temporal KG
 - `src/obsidian_bridge/fact_extractor.py` — Auto fact extraction
 - `src/obsidian_bridge/ingest.py` — Cascade Ingest pipeline

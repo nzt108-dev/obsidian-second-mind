@@ -251,3 +251,43 @@ None
 2. Install Whisper + Tesseract for full bot functionality
 3. Test Telegram bot with real messages
 
+---
+
+## Session 2026-04-09 (cont.) — Agent Memory v0.9.0
+
+### What Was Done
+1. **Agent Memory module** (`hooks.py`, 505 lines)
+   - `SessionHooks` class: save/load session snapshots
+   - `SessionSnapshot` dataclass: git state, commits, decisions, blockers, next steps
+   - `emergency_save()`: fast context dump (git status only, no vault scan)
+   - `list_sessions()`: browse session history
+   - `generate_enhanced_wakeup()`: standard wake-up + session memory + Temporal KG
+   - Wake-up cache: `_memory/wakeup-cache.json`
+2. **3 new MCP tools** (total: 23 tools)
+   - `save_session`: full session save with git + decisions
+   - `load_session`: load last snapshot for project
+   - `get_enhanced_wakeup`: enriched start context
+3. **2 CLI commands**: `obsidian-bridge save`, `obsidian-bridge emergency-save`
+4. **Auto-start bot**: LaunchAgent for Telegram bot + process queued messages
+5. **Version bump**: 0.8.0 → 0.9.0
+
+### What Failed / Issues
+- `__import__("datetime")` hack in `_get_recent_decisions` — replaced with proper import
+- Same-second timestamp caused file overwrites — fixed with microsecond precision
+- `wakeup-cache.json` appeared in `list_sessions()` — added skip filter
+- Unused imports in hooks.py — removed
+
+### Git Commits
+- `17bc1e9` — feat: auto-start bot on login + process queued messages
+- `1745227` — feat: v0.9.0 — Agent Memory
+
+### Verification
+- ruff: All checks passed ✅
+- pytest: 18/18 passed ✅
+- Agent Memory tests: 6/6 passed ✅
+- Import chain: No circular deps ✅
+
+### Next Session — What To Do First
+1. v1.0.0 — Ultimate Brain (polish, README, benchmarks, PyPI)
+2. Install Whisper + Tesseract
+3. Test Telegram bot live
