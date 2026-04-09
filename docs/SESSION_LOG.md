@@ -175,3 +175,79 @@ None
 2. Test MCP tools in real session (analyze_sessions, scout_tools, check_dependencies)
 3. Dashboard v2 with Tech Radar visualization
 4. Community Pulse module
+
+---
+
+## Session 2026-04-09 — v0.6–v0.8 Mega Build
+
+### What Was Done
+
+#### v0.6.0 — Capture & Recall
+1. **Telegram Capture Bot** (`telegram_bot.py`, 706 lines)
+   - ANY message → saved to inbox/ as markdown note
+   - URL auto-detect → page title fetch → research note
+   - @project prefix routing (e.g. `@brieftube fix auth bug`)
+   - Forwarded messages tagged 'forwarded'
+   - Voice → Whisper transcription (lazy-loaded)
+   - Photos → Tesseract OCR text extraction
+   - Commands: /search, /projects, /status, /help
+2. **Wake-up Context** (`wakeup.py`, 224 lines)
+   - Generates ~200 token summary for AI session start
+   - Active projects, recent decisions, inbox count, blockers
+3. **Config updates**: telegram bot token, allowed users, default project
+4. **CLI**: `obsidian-bridge bot` command
+
+#### v0.7.0 — Cascade Intelligence
+5. **Cascade Ingest Pipeline** (`ingest.py`, 409 lines)
+   - One source → N wiki updates (create, cross-ref, concept stubs)
+   - Regex entity extraction (50+ tech terms)
+   - Semantic search for cross-referencing
+   - Auto-concept stubs for new technologies
+6. **Auto Radar** (`auto_radar.py`, 280 lines)
+   - Diff tracking (JSON snapshots in `_radar/`)
+   - Telegram alerts for high-relevance findings
+   - Vault note creation for important discoveries
+7. **CLI**: `obsidian-bridge ingest`, `obsidian-bridge radar`
+8. **MCP tools**: `ingest_source`, `auto_radar_scan`
+
+#### v0.8.0 — Temporal Brain
+9. **Temporal Knowledge Graph** (`graph.py` extension, +430 lines)
+   - Facts with `valid_from`/`valid_to` — "what was true when?"
+   - Timeline queries: chronological history of any entity
+   - Point-in-time queries: "what stack did BriefTube have in February?"
+   - Persistence: `_graph/facts.json`
+10. **Contradiction Detection** + auto-resolution
+    - Same subject+predicate, different object = conflict
+    - Severity: critical/warning/info
+    - Auto-resolve: old fact → expired, new fact → active
+11. **Auto Fact Extraction** (`fact_extractor.py`, 386 lines)
+    - Hooked into `create_note` and `ingest_source` — fully automatic
+    - 10 tech categories, 80+ technologies
+    - Regex patterns for RU/EN: "использует X", "switched from X to Y", etc.
+    - Category-aware predicates: turso→uses_db, clerk→uses_auth
+    - Stop-word cleaning: "flutter and" → "flutter"
+12. **MCP tools**: `kg_add_fact`, `kg_invalidate`, `kg_timeline`, `kg_check_contradictions`
+
+### What Failed / Issues
+- Greedy regex captured multi-word phrases ("turso для edge deployment") — fixed with `_clean_tech_name()` stop-word stripping
+- Generic `uses` predicate caused false contradictions (turso vs riverpod) — fixed with `_categorize_tech()` auto-specialization
+- Duplicate import `KnowledgeGraph` in mcp_server — removed
+- Unused variable `types` in wakeup.py — removed
+
+### Git Commits
+- `e1ed454` — feat: v0.6-0.8 — Telegram bot, Cascade Ingest, Temporal Brain
+
+### Verification
+- ruff: All checks passed ✅
+- pytest: 18/18 passed ✅
+- Import chain: No circular deps ✅
+- Cascade ingest integration: 2 actions, 3 entities ✅
+- Auto radar: diff model + init verified ✅
+- Temporal KG: full lifecycle (add→contradict→auto-resolve→timeline→query_at_date) ✅
+- Auto fact extraction: 6 facts from 1 text, 0 skipped ✅
+
+### Next Session — What To Do First
+1. v0.9.0 — Agent Memory (auto-save hooks, emergency save)
+2. Install Whisper + Tesseract for full bot functionality
+3. Test Telegram bot with real messages
+

@@ -1,71 +1,63 @@
 # Obsidian Second Mind — Current Status
-> Last updated: 2026-04-08
+> Last updated: 2026-04-09
 
 ## Version / Build Status
-- **Version**: 0.5.0 "Intelligence Layer"
-- **CI**: GitHub Actions (ruff + import check + pytest + CLI verify)
-- **Lint**: ✅ All checks passed
-- **Tests**: ✅ 18/18 passed (test_scout.py)
+- **Version**: 0.8.0
+- **Status**: ✅ All systems operational
+- **ruff**: All checks passed
+- **pytest**: 18/18 passed
+- **Import chain**: No circular deps
 
 ## What's Done
-### Core (v0.1.0)
-- Obsidian vault at ~/SecondMind/ — 19 projects, 53+ notes, 524+ chunks
-- MCP server (stdio) — 14 tools
-- Parser: frontmatter + WikiLinks + inline tags
-- Indexer: ChromaDB + sentence-transformers
 
-### Hybrid Search (v0.2.0)
-- BM25 keyword index (rank-bm25)
-- RRF fusion (vector + keyword)
-- Cross-Encoder reranking
+### Core System (v0.1–v0.4)
+- MCP server with 20+ tools
+- Vector search (ChromaDB + sentence-transformers)
+- Hybrid search (BM25 + vector + RRF fusion)
+- Cross-encoder reranking
+- MMR diversity
+- Vault parser + linter
+- Knowledge graph (WikiLinks)
+- Pattern extraction
+- Decay-based scoring
+- File watcher daemon
 
-### Karpathy Wiki Pattern (v0.3.0)
-- **Linter** — 6 health checks (orphans, stale, broken links, missing concepts, TODOs, frontmatter)
-- **MMR diversity** — near-duplicate detection + Maximal Marginal Relevance
-- **New tools**: update_note, lint_vault
-- **New note types**: concept, comparison, synthesis, research
-- **Auto-generated**: index.md (vault catalog) + log.md (operation log)
-- **Wiki Schema**: _global/wiki-schema.md (vault conventions)
+### Intelligence Layer (v0.5)
+- Session analyzer (repeating problems)
+- Tech Radar (npm/GitHub scanning)
+- Dependency checker
 
-### Adaptive Brain (v0.4.0)
-- **Knowledge Graph** — queryable graph from WikiLinks (26 nodes, 130 edges, hub detection)
-- **Pattern Extractor** — auto-rules from decision outcomes (success/failure patterns)
-- **Decay Scoring** — exponential decay in search (λ=0.005, fresh notes rank higher)
-- **Enhanced Watcher** — auto-logging + index.md regen on vault changes
+### Capture & Recall (v0.6)
+- Telegram bot (text, URLs, voice/Whisper, photos/OCR)
+- Wake-up context (~200 token summary)
+- CLI: `bot` command
 
-### Intelligence Layer (v0.5.0) ← NEW
-- **Session Intelligence** — `analyze_sessions` tool: parses session logs, finds repeating problems, extracts workaround patterns, generates recommendations
-- **Tech Radar** — `scout_tools` tool: scans npm registry and GitHub trending for new MCP servers, AI tools, devtools relevant to our stack
-- **Dependency Watch** — `check_dependencies` tool: checks npm/pip/flutter deps against registries, classifies updates (major/minor/patch)
-- **14 MCP tools** total (was 11)
-- **httpx** added for async HTTP requests
+### Cascade Intelligence (v0.7)
+- Cascade Ingest pipeline (1 source → N wiki updates)
+- Auto Radar with diff tracking + Telegram alerts
+- Entity extraction + concept stub generation
+- CLI: `ingest`, `radar` commands
 
-### Infrastructure
-- WikiLinks across 45/47 notes
-- GitHub Actions CI
-- Notion Documentation Hub
-- Push workflow with portfolio sync
-- Dashboard (HTML/JS)
-- 18 unit tests (test_scout.py)
+### Temporal Brain (v0.8)
+- Temporal Knowledge Graph (facts with valid_from/valid_to)
+- Contradiction detection + auto-resolution
+- Auto fact extraction from notes (FactExtractor)
+- 10 tech categories, 80+ technologies
+- MCP tools: kg_add_fact, kg_invalidate, kg_timeline, kg_check_contradictions
 
 ## Known Issues / Blockers
-- YAML date parsing: tags like "2026-04-08" auto-parse as datetime.date — fixed with quoting
-- MCP server needs restart after code changes
-- Python environment: system Python (3.12) vs Xcode Python (3.9) need alignment
+- None critical
+- Whisper/OCR require separate installs (`pip install openai-whisper`, `brew install tesseract`)
 
 ## What's Next
-1. Add Outcome sections to all 10 decisions missing them
-2. Dashboard v2 (graph visualization, health score)
-3. Make `scout_tools` run periodically via watcher hooks
-4. Add Community Pulse (Reddit/HN trending analysis)
-5. Consider PyPI publish
+- **v0.9.0 — Agent Memory**: Auto-save hooks, emergency save, session continuity
+- **v1.0.0 — Ultimate Brain**: Full integration, dashboard, self-maintenance
 
 ## Key Files
-- `src/obsidian_bridge/mcp_server.py` — MCP server (14 tools)
-- `src/obsidian_bridge/scout.py` — Intelligence Layer (3 analyzers) ← NEW
-- `src/obsidian_bridge/indexer.py` — Hybrid search + MMR
-- `src/obsidian_bridge/linter.py` — Vault health checks
-- `src/obsidian_bridge/graph.py` — Knowledge Graph
-- `src/obsidian_bridge/patterns.py` — Pattern Extractor
-- `src/obsidian_bridge/config.py` — All settings
-- `tests/test_scout.py` — Unit tests for Intelligence Layer ← NEW
+- `src/obsidian_bridge/mcp_server.py` — MCP server (1300+ lines, 20+ tools)
+- `src/obsidian_bridge/graph.py` — Knowledge Graph + Temporal KG
+- `src/obsidian_bridge/fact_extractor.py` — Auto fact extraction
+- `src/obsidian_bridge/ingest.py` — Cascade Ingest pipeline
+- `src/obsidian_bridge/telegram_bot.py` — Telegram capture bot
+- `src/obsidian_bridge/auto_radar.py` — Auto Radar + diff
+- `src/obsidian_bridge/wakeup.py` — Wake-up context generator
