@@ -1,4 +1,5 @@
 """Configuration management for Obsidian Bridge."""
+from functools import lru_cache
 from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -118,6 +119,7 @@ class Settings(BaseSettings):
     model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env"}
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Get application settings singleton."""
+    """Get application settings singleton (cached)."""
     return Settings()

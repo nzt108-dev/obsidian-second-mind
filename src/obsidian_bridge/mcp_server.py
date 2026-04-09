@@ -1,9 +1,10 @@
 """MCP Server for Obsidian Second Mind.
 
+v1.0.0: Ultimate Brain (release).
+- Path traversal protection on get_note / update_note
+- Settings caching with lru_cache
+
 v0.9.0: Agent Memory.
-- Session save/load: save_session, load_session tools
-- Enhanced wake-up: get_enhanced_wakeup tool (standard + memory + KG)
-- Pre-computed wake-up cache in _memory/
 
 v0.8.0: Temporal Brain.
 - Temporal KG: kg_add_fact, kg_invalidate, kg_timeline tools
@@ -881,7 +882,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text="\n".join(lines))]
 
     elif name == "get_note":
-        note_path = vault / arguments["path"]
+        note_path = (vault / arguments["path"]).resolve()
+        if not note_path.is_relative_to(vault.resolve()):
+            return [TextContent(type="text", text="❌ Path must be within vault.")]
         if not note_path.exists():
             return [TextContent(type="text", text=f"Note not found: {arguments['path']}")]
         note = parse_note(note_path, vault)
@@ -953,7 +956,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=result)]
 
     elif name == "update_note":
-        note_path = vault / arguments["path"]
+        note_path = (vault / arguments["path"]).resolve()
+        if not note_path.is_relative_to(vault.resolve()):
+            return [TextContent(type="text", text="❌ Path must be within vault.")]
         if not note_path.exists():
             return [TextContent(type="text", text=f"Note not found: {arguments['path']}")]
 
