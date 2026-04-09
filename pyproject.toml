@@ -4,22 +4,29 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obsidian-second-mind"
-version = "0.9.0"
-description = "Turn your Obsidian vault into a Second Mind for AI coding agents via MCP"
+version = "1.0.0"
+description = "Turn your Obsidian vault into a living Second Brain for AI coding agents via MCP"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
     { name = "nzt108", email = "nzt108@users.noreply.github.com" },
 ]
-keywords = ["obsidian", "mcp", "ai", "second-brain", "knowledge-base"]
+keywords = [
+    "obsidian", "mcp", "ai", "second-brain", "knowledge-base",
+    "knowledge-graph", "semantic-search", "model-context-protocol",
+    "coding-assistant", "vault",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
     "mcp[cli]>=1.0.0",
@@ -48,6 +55,11 @@ media = [
     # Tesseract OCR: install via `brew install tesseract tesseract-lang`
 ]
 
+[project.urls]
+Homepage = "https://github.com/nzt108-dev/obsidian-second-mind"
+Repository = "https://github.com/nzt108-dev/obsidian-second-mind"
+Issues = "https://github.com/nzt108-dev/obsidian-second-mind/issues"
+
 [project.scripts]
 obsidian-bridge = "obsidian_bridge.cli:cli"
 
@@ -57,3 +69,7 @@ packages = ["src/obsidian_bridge"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+testpaths = ["tests"]
