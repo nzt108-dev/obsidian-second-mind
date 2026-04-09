@@ -693,7 +693,8 @@ def run_bot():
     inbox.mkdir(parents=True, exist_ok=True)
 
     app = create_bot(settings)
-    app.run_polling(drop_pending_updates=True)
+    # drop_pending_updates=False → process messages that queued while Mac was off
+    app.run_polling(drop_pending_updates=False)
 
 
 def main():
