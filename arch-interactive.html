@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<title>🗺️ Architecture Map — architect-portfolio</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0e17; color: #c9d1d9; font-family: 'Inter', -apple-system, sans-serif; overflow: hidden; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+#header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    background: linear-gradient(180deg, rgba(10,14,23,0.98) 0%, rgba(10,14,23,0.7) 100%);
+    padding: 16px 24px; display: flex; align-items: center; gap: 24px;
+    border-bottom: 1px solid rgba(88,166,255,0.15);
+    backdrop-filter: blur(12px);
+}
+#header h1 { font-size: 18px; font-weight: 700; color: #58a6ff; }
+.stats { display: flex; gap: 16px; }
+.stat { 
+    background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.15);
+    padding: 6px 14px; border-radius: 8px; font-size: 12px;
+}
+.stat-val { font-weight: 700; color: #58a6ff; font-size: 16px; }
+
+#legend {
+    position: fixed; bottom: 20px; left: 20px; z-index: 10;
+    background: rgba(13,17,23,0.95); border: 1px solid rgba(48,54,61,0.8);
+    border-radius: 12px; padding: 14px 18px;
+    backdrop-filter: blur(8px);
+}
+#legend h3 { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+#tooltip {
+    position: fixed; display: none; z-index: 20;
+    background: rgba(13,17,23,0.95); border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 10px; padding: 14px 18px; font-size: 12px;
+    backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    max-width: 280px; pointer-events: none;
+}
+#tooltip .tt-name { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+#tooltip .tt-layer { font-size: 11px; color: #8b949e; margin-bottom: 8px; }
+#tooltip .tt-info { color: #58a6ff; }
+#tooltip .tt-imports { margin-top: 8px; color: #8b949e; font-size: 11px; }
+#tooltip .tt-imports span { color: #c9d1d9; }
+
+svg { width: 100vw; height: 100vh; }
+.link { stroke-opacity: 0.4; }
+.link:hover { stroke-opacity: 1; }
+.node-label { font-size: 9px; fill: #c9d1d9; text-anchor: middle; pointer-events: none; }
+</style>
+</head><body>
+
+<div id="header">
+    <h1>🗺️ architect-portfolio</h1>
+    <div class="stats">
+        <div class="stat"><span class="stat-val">115</span> modules</div>
+        <div class="stat"><span class="stat-val">8</span> deps</div>
+        <div class="stat"><span class="stat-val">15455</span> LOC</div>
+        <div class="stat"><span class="stat-val">9</span> layers</div>
+    </div>
+</div>
+
+<div id="legend">
+    <h3>Layers</h3>
+<div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div>🖥️ UI (27)</div><div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>🔌 API (64)</div><div class="legend-item"><div class="legend-dot" style="background:#2196F3"></div>⚙️ Services (1)</div><div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>📋 Models (2)</div><div class="legend-item"><div class="legend-dot" style="background:#9C27B0"></div>💾 DB (13)</div><div class="legend-item"><div class="legend-dot" style="background:#607D8B"></div>🔧 Config (2)</div><div class="legend-item"><div class="legend-dot" style="background:#795548"></div>🛠️ Utils (3)</div><div class="legend-item"><div class="legend-dot" style="background:#9E9E9E"></div>🧪 Tests (2)</div><div class="legend-item"><div class="legend-dot" style="background:#546E7A"></div>📁 Other (1)</div>
+</div>
+
+<div id="tooltip">
+    <div class="tt-name"></div>
+    <div class="tt-layer"></div>
+    <div class="tt-info"></div>
+    <div class="tt-imports"></div>
+</div>
+
+<svg></svg>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const data = {"nodes": [{"id": "app/about/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 10.85, "lines": 217, "imports": ["next", "next", "@", "lucide-react"]}, {"id": "app/admin/activity/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 16.45, "lines": 329, "imports": ["react"]}, {"id": "app/admin/agent-hub/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 24.65, "lines": 493, "imports": ["react"]}, {"id": "app/admin/analytics/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 13.9, "lines": 278, "imports": ["react"]}, {"id": "app/admin/analytics/utm/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 17.05, "lines": 341, "imports": ["react", "lucide-react"]}, {"id": "app/admin/blog/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 7.9, "lines": 158, "imports": ["react", "next"]}, {"id": "app/admin/calendar/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 15.15, "lines": 303, "imports": ["react"]}, {"id": "app/admin/contacts/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 12.7, "lines": 254, "imports": ["react", "next"]}, {"id": "app/admin/content/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 11.2, "lines": 224, "imports": ["react"]}, {"id": "app/admin/crm/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 35, "lines": 824, "imports": ["react"]}, {"id": "app/admin/finance/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 13.6, "lines": 272, "imports": ["react"]}, {"id": "app/admin/layout.tsx", "name": "layout", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 21.0, "lines": 420, "imports": ["react", "next", "next"]}, {"id": "app/admin/login/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 80, "imports": ["react", "next"]}, {"id": "app/admin/messages/MarkAsReadButton.tsx", "name": "MarkAsReadButton", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 25, "imports": ["next"]}, {"id": "app/admin/messages/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 35, "lines": 747, "imports": ["react"]}, {"id": "app/admin/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 20.1, "lines": 402, "imports": ["react", "next"]}, {"id": "app/admin/projects/DeleteButton.tsx", "name": "DeleteButton", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 23, "imports": ["next"]}, {"id": "app/admin/projects/ProjectForm.tsx", "name": "ProjectForm", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 21.55, "lines": 431, "imports": ["react", "next", "next"]}, {"id": "app/admin/projects/[id]/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 67, "imports": ["next", "@", "ProjectForm"]}, {"id": "app/admin/projects/new/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 10, "imports": ["ProjectForm"]}, {"id": "app/admin/projects/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 111, "imports": ["next", "@", "DeleteButton"]}, {"id": "app/admin/settings/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 10.2, "lines": 204, "imports": ["react"]}, {"id": "app/admin/skills/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 7.25, "lines": 145, "imports": ["react", "next"]}, {"id": "app/admin/workspaces/[slug]/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 24.3, "lines": 486, "imports": ["react", "next", "next"]}, {"id": "app/admin/workspaces/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 30.8, "lines": 616, "imports": ["react", "next"]}, {"id": "app/api/admin/activity/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 71, "imports": ["next", "@"]}, {"id": "app/api/admin/agent-hub/[id]/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 35, "imports": ["next", "@"]}, {"id": "app/api/admin/agent-hub/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 57, "imports": ["next", "@"]}, {"id": "app/api/admin/analytics/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 8.2, "lines": 164, "imports": ["next", "@"]}, {"id": "app/api/admin/auth/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 75, "imports": ["next", "next"]}, {"id": "app/api/admin/blog/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 37, "imports": ["next", "@"]}, {"id": "app/api/admin/crm/tasks/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 7.7, "lines": 154, "imports": ["next", "@"]}, {"id": "app/api/admin/dashboard/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 111, "imports": ["next", "@"]}, {"id": "app/api/admin/settings/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 41, "imports": ["next", "@"]}, {"id": "app/api/admin/workspaces/[slug]/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 104, "imports": ["next", "@"]}, {"id": "app/api/admin/workspaces/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 85, "imports": ["next", "@"]}, {"id": "app/api/agent/activity/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 94, "imports": ["next", "@"]}, {"id": "app/api/agent/crm/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 7.1, "lines": 142, "imports": ["next", "@"]}, {"id": "app/api/agent/projects/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 13.75, "lines": 275, "imports": ["next", "@"]}, {"id": "app/api/agent/suggestions/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 118, "imports": ["next", "@"]}, {"id": "app/api/contact/[id]/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 45, "imports": ["next", "@"]}, {"id": "app/api/contact/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 64, "imports": ["next", "@", "@"]}, {"id": "app/api/cron/generate-article/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 8.2, "lines": 164, "imports": ["next", "rss-parser", "openai", "@"]}, {"id": "app/api/projects/[slug]/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6.65, "lines": 133, "imports": ["next", "@"]}, {"id": "app/api/projects/by-id/[id]/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 24, "imports": ["next", "@"]}, {"id": "app/api/projects/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 96, "imports": ["next", "@"]}, {"id": "app/api/skills/[id]/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 22, "imports": ["next", "@"]}, {"id": "app/api/skills/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 35, "imports": ["next", "@"]}, {"id": "app/api/social-links/route.ts", "name": "route", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 53, "imports": ["next", "@"]}, {"id": "app/blog/[slug]/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6.85, "lines": 137, "imports": ["@", "next", "next", "next"]}, {"id": "app/blog/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 66, "imports": ["next", "@"]}, {"id": "app/brieftube/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 8.65, "lines": 173, "imports": ["next", "next"]}, {"id": "app/brieftube/privacy/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 97, "imports": ["next"]}, {"id": "app/brieftube/terms/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 102, "imports": ["next"]}, {"id": "app/contact/ContactForm.tsx", "name": "ContactForm", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 9.65, "lines": 193, "imports": ["react", "@", "lucide-react"]}, {"id": "app/contact/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 10.05, "lines": 201, "imports": ["@", "ContactForm"]}, {"id": "app/layout.tsx", "name": "layout", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6.15, "lines": 123, "imports": ["next", "next", "@", "@", "@"]}, {"id": "app/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 38, "imports": ["@", "@", "@", "@", "@", "@"]}, {"id": "app/projects/ProjectsFilter.tsx", "name": "ProjectsFilter", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 39, "imports": ["next", "@"]}, {"id": "app/projects/[slug]/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 12.35, "lines": 247, "imports": ["next", "@", "next", "@"]}, {"id": "app/projects/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 57, "imports": ["@", "@", "ProjectsFilter"]}, {"id": "app/services/page.tsx", "name": "page", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 8.8, "lines": 176, "imports": ["next", "@", "lucide-react"]}, {"id": "components/analytics/AnalyticsTracker.tsx", "name": "AnalyticsTracker", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 8.8, "lines": 176, "imports": ["react", "next", "next"]}, {"id": "components/layout/Background.tsx", "name": "Background", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 20, "imports": []}, {"id": "components/layout/Footer.tsx", "name": "Footer", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6.25, "lines": 125, "imports": ["next", "next", "@"]}, {"id": "components/layout/Header.tsx", "name": "Header", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 7.25, "lines": 145, "imports": ["next", "next", "next", "react", "lucide-react"]}, {"id": "components/ui/CTASection.tsx", "name": "CTASection", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 51, "imports": ["react", "lucide-react", "LeadCaptureWidget"]}, {"id": "components/ui/ComparisonTable.tsx", "name": "ComparisonTable", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 114, "imports": ["lucide-react"]}, {"id": "components/ui/Dashboard/CursorProtocolScheduler.tsx", "name": "CursorProtocolScheduler", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 87, "imports": ["react", "gsap"]}, {"id": "components/ui/Dashboard/DiagnosticShuffler.tsx", "name": "DiagnosticShuffler", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 71, "imports": ["react", "gsap"]}, {"id": "components/ui/Dashboard/TelemetryTypewriter.tsx", "name": "TelemetryTypewriter", "layer": "model", "color": "#FF9800", "layer_label": "📋 Models", "size": 6, "lines": 73, "imports": ["react"]}, {"id": "components/ui/DashboardFeatures.tsx", "name": "DashboardFeatures", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 80, "imports": ["react", "gsap", "gsap", "Dashboard", "Dashboard", "Dashboard"]}, {"id": "components/ui/FAQ.tsx", "name": "FAQ", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 81, "imports": ["react", "lucide-react"]}, {"id": "components/ui/FeaturedWork.tsx", "name": "FeaturedWork", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6.8, "lines": 136, "imports": ["react", "gsap", "gsap", "lucide-react"]}, {"id": "components/ui/GlitchText.tsx", "name": "GlitchText", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 16, "imports": []}, {"id": "components/ui/GradientIcon.tsx", "name": "GradientIcon", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 7.8, "lines": 156, "imports": []}, {"id": "components/ui/HeroAvatar.tsx", "name": "HeroAvatar", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 7, "imports": []}, {"id": "components/ui/HeroSection.tsx", "name": "HeroSection", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6.25, "lines": 125, "imports": ["react", "gsap", "lucide-react", "@"]}, {"id": "components/ui/HeroV1.tsx", "name": "HeroV1", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 68, "imports": ["next", "@"]}, {"id": "components/ui/HeroV2.tsx", "name": "HeroV2", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6.75, "lines": 135, "imports": ["react", "next", "next", "gsap", "lucide-react"]}, {"id": "components/ui/HowItWorks.tsx", "name": "HowItWorks", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6.4, "lines": 128, "imports": ["react", "gsap", "gsap", "lucide-react"]}, {"id": "components/ui/ImageGallery.tsx", "name": "ImageGallery", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 59, "imports": ["react", "lucide-react"]}, {"id": "components/ui/LeadCaptureWidget.tsx", "name": "LeadCaptureWidget", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 7.15, "lines": 143, "imports": ["react", "lucide-react", "@"]}, {"id": "components/ui/ProcessSteps.tsx", "name": "ProcessSteps", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6.45, "lines": 129, "imports": ["react", "gsap", "gsap", "lucide-react"]}, {"id": "components/ui/ProgressBar.tsx", "name": "ProgressBar", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 46, "imports": []}, {"id": "components/ui/ProjectCard.tsx", "name": "ProjectCard", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 77, "imports": ["next", "@", "lucide-react"]}, {"id": "components/ui/QuickPricing.tsx", "name": "QuickPricing", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 93, "imports": ["next", "lucide-react"]}, {"id": "components/ui/ServicesBento.tsx", "name": "ServicesBento", "layer": "service", "color": "#2196F3", "layer_label": "⚙️ Services", "size": 8.45, "lines": 169, "imports": ["react", "next", "gsap", "gsap", "lucide-react", "@"]}, {"id": "components/ui/StickyMobileCTA.tsx", "name": "StickyMobileCTA", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 58, "imports": ["react", "gsap", "gsap", "lucide-react", "@"]}, {"id": "components/ui/WhyChooseMe.tsx", "name": "WhyChooseMe", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 6, "lines": 63, "imports": ["GradientIcon"]}, {"id": "components/ui/WhyMe.tsx", "name": "WhyMe", "layer": "ui", "color": "#E91E63", "layer_label": "🖥️ UI", "size": 8.3, "lines": 166, "imports": ["react", "gsap", "gsap", "lucide-react"]}, {"id": "lib/data.ts", "name": "data", "layer": "util", "color": "#795548", "layer_label": "🛠️ Utils", "size": 9.8, "lines": 196, "imports": ["@"]}, {"id": "lib/prisma.ts", "name": "prisma", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 20, "imports": ["@prisma", "@prisma"]}, {"id": "lib/queries.ts", "name": "queries", "layer": "util", "color": "#795548", "layer_label": "🛠️ Utils", "size": 8.05, "lines": 161, "imports": ["@", "@"]}, {"id": "lib/telegram.ts", "name": "telegram", "layer": "util", "color": "#795548", "layer_label": "🛠️ Utils", "size": 6, "lines": 98, "imports": []}, {"id": "next-env.d.ts", "name": "next-env.d", "layer": "config", "color": "#607D8B", "layer_label": "🔧 Config", "size": 6, "lines": 6, "imports": []}, {"id": "next.config.ts", "name": "next.config", "layer": "config", "color": "#607D8B", "layer_label": "🔧 Config", "size": 6, "lines": 7, "imports": ["next"]}, {"id": "prisma/check-tables.ts", "name": "check-tables", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 16, "imports": ["@libsql"]}, {"id": "prisma/migrate-activity.ts", "name": "migrate-activity", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 45, "imports": ["@libsql"]}, {"id": "prisma/migrate-agent-suggestions.ts", "name": "migrate-agent-suggestions", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 39, "imports": ["@libsql"]}, {"id": "prisma/migrate-crm.ts", "name": "migrate-crm", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 52, "imports": ["@libsql"]}, {"id": "prisma/migrate-dealvalue.ts", "name": "migrate-dealvalue", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 25, "imports": ["@libsql"]}, {"id": "prisma/migrate-leads.ts", "name": "migrate-leads", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 35, "imports": ["@libsql"]}, {"id": "prisma/migrate-pageview.ts", "name": "migrate-pageview", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 35, "imports": ["@libsql"]}, {"id": "prisma/migrate-turso.ts", "name": "migrate-turso", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 105, "imports": ["@libsql"]}, {"id": "prisma/migrate-utm.ts", "name": "migrate-utm", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 39, "imports": ["@libsql"]}, {"id": "prisma/migrate-workspaces.ts", "name": "migrate-workspaces", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 60, "imports": ["@libsql"]}, {"id": "prisma/seed-crm-portfolio.ts", "name": "seed-crm-portfolio", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 84, "imports": ["@libsql"]}, {"id": "prisma/seed.ts", "name": "seed", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 9.25, "lines": 185, "imports": ["@prisma", "@prisma"]}, {"id": "prisma.config.ts", "name": "prisma.config", "layer": "data", "color": "#9C27B0", "layer_label": "💾 DB", "size": 6, "lines": 9, "imports": ["node:path", "prisma"]}, {"id": "public/sw.js", "name": "sw", "layer": "other", "color": "#546E7A", "layer_label": "📁 Other", "size": 6, "lines": 12, "imports": []}, {"id": "test-api.js", "name": "test-api", "layer": "api", "color": "#4CAF50", "layer_label": "🔌 API", "size": 6, "lines": 13, "imports": []}, {"id": "test-llm.js", "name": "test-llm", "layer": "test", "color": "#9E9E9E", "layer_label": "🧪 Tests", "size": 6, "lines": 26, "imports": ["openai", "dotenv"]}, {"id": "test-projects-roi.ts", "name": "test-projects-roi", "layer": "test", "color": "#9E9E9E", "layer_label": "🧪 Tests", "size": 6, "lines": 27, "imports": ["@prisma", "@prisma"]}, {"id": "types/index.ts", "name": "index", "layer": "model", "color": "#FF9800", "layer_label": "📋 Models", "size": 6, "lines": 55, "imports": []}], "links": [{"source": "app/admin/projects/[id]/page.tsx", "target": "app/admin/projects/ProjectForm.tsx"}, {"source": "app/admin/projects/new/page.tsx", "target": "app/admin/projects/ProjectForm.tsx"}, {"source": "app/admin/projects/page.tsx", "target": "app/admin/projects/DeleteButton.tsx"}, {"source": "app/contact/page.tsx", "target": "app/contact/ContactForm.tsx"}, {"source": "app/projects/page.tsx", "target": "app/projects/ProjectsFilter.tsx"}, {"source": "components/ui/CTASection.tsx", "target": "components/ui/LeadCaptureWidget.tsx"}, {"source": "components/ui/WhyChooseMe.tsx", "target": "components/ui/GradientIcon.tsx"}, {"source": "prisma.config.ts", "target": "lib/prisma.ts"}]};
+
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+const svg = d3.select("svg")
+    .attr("viewBox", [0, 0, width, height]);
+
+const g = svg.append("g");
+
+// Zoom
+const zoom = d3.zoom()
+    .scaleExtent([0.2, 5])
+    .on("zoom", (e) => g.attr("transform", e.transform));
+svg.call(zoom);
+
+// Arrow markers
+svg.append("defs").selectAll("marker")
+    .data(["arrow"])
+    .join("marker")
+    .attr("id", d => d)
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 20)
+    .attr("refY", 0)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("fill", "#58a6ff")
+    .attr("d", "M0,-5L10,0L0,5");
+
+// Force simulation
+const simulation = d3.forceSimulation(data.nodes)
+    .force("link", d3.forceLink(data.links).id(d => d.id).distance(120))
+    .force("charge", d3.forceManyBody().strength(-200))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(d => d.size + 4))
+    .force("x", d3.forceX(width / 2).strength(0.05))
+    .force("y", d3.forceY(height / 2).strength(0.05));
+
+// Group by layer for clustering
+const layerCenters = {};
+const layers = [...new Set(data.nodes.map(d => d.layer))];
+layers.forEach((l, i) => {
+    const angle = (2 * Math.PI * i) / layers.length;
+    layerCenters[l] = {
+        x: width/2 + Math.cos(angle) * 250,
+        y: height/2 + Math.sin(angle) * 250,
+    };
+});
+simulation.force("layerX", d3.forceX(d => layerCenters[d.layer]?.x || width/2).strength(0.12));
+simulation.force("layerY", d3.forceY(d => layerCenters[d.layer]?.y || height/2).strength(0.12));
+
+// Links
+const link = g.append("g")
+    .selectAll("line")
+    .data(data.links)
+    .join("line")
+    .attr("class", "link")
+    .attr("stroke", "#58a6ff")
+    .attr("stroke-width", 1.5)
+    .attr("marker-end", "url(#arrow)");
+
+// Node groups
+const node = g.append("g")
+    .selectAll("g")
+    .data(data.nodes)
+    .join("g")
+    .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+// Glow effect
+node.append("circle")
+    .attr("r", d => d.size + 4)
+    .attr("fill", d => d.color)
+    .attr("opacity", 0.15)
+    .attr("filter", "blur(4px)");
+
+// Main circle
+node.append("circle")
+    .attr("r", d => d.size)
+    .attr("fill", d => d.color)
+    .attr("stroke", d => d.color)
+    .attr("stroke-width", 1.5)
+    .attr("fill-opacity", 0.7)
+    .attr("cursor", "grab")
+    .on("mouseover", showTooltip)
+    .on("mousemove", moveTooltip)
+    .on("mouseout", hideTooltip);
+
+// Labels (only for larger nodes)
+node.filter(d => d.size > 12)
+    .append("text")
+    .attr("class", "node-label")
+    .attr("dy", d => d.size + 14)
+    .text(d => d.name);
+
+simulation.on("tick", () => {
+    link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+});
+
+// Drag
+function dragstarted(e) {
+    if (!e.active) simulation.alphaTarget(0.3).restart();
+    e.subject.fx = e.subject.x;
+    e.subject.fy = e.subject.y;
+}
+function dragged(e) {
+    e.subject.fx = e.x;
+    e.subject.fy = e.y;
+}
+function dragended(e) {
+    if (!e.active) simulation.alphaTarget(0);
+    e.subject.fx = null;
+    e.subject.fy = null;
+}
+
+// Tooltip
+const tooltip = d3.select("#tooltip");
+function showTooltip(e, d) {
+    tooltip.style("display", "block");
+    tooltip.select(".tt-name").text(d.name);
+    tooltip.select(".tt-layer").text(d.layer_label);
+    tooltip.select(".tt-info").text(d.lines + " lines  •  " + d.layer);
+    const imp = d.imports?.length ? "Imports: " : "";
+    tooltip.select(".tt-imports").html(imp + (d.imports || []).map(i => "<span>" + i + "</span>").join(", "));
+    
+    // Highlight connected
+    const connected = new Set();
+    data.links.forEach(l => {
+        const sid = typeof l.source === 'object' ? l.source.id : l.source;
+        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        if (sid === d.id) connected.add(tid);
+        if (tid === d.id) connected.add(sid);
+    });
+    node.selectAll("circle:nth-child(2)")
+        .attr("opacity", n => n.id === d.id || connected.has(n.id) ? 1 : 0.15);
+    link.attr("stroke-opacity", l => {
+        const sid = typeof l.source === 'object' ? l.source.id : l.source;
+        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        return sid === d.id || tid === d.id ? 0.8 : 0.05;
+    });
+}
+function moveTooltip(e) {
+    tooltip.style("left", (e.clientX + 16) + "px").style("top", (e.clientY - 20) + "px");
+}
+function hideTooltip() {
+    tooltip.style("display", "none");
+    node.selectAll("circle:nth-child(2)").attr("opacity", 0.7);
+    link.attr("stroke-opacity", 0.4);
+}
+
+// Initial zoom to fit
+setTimeout(() => {
+    svg.transition().duration(800).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(width*0.1, height*0.1).scale(0.8)
+    );
+}, 1500);
+</script>
+</body></html>

@@ -89,3 +89,11 @@ curl -s -X POST https://nzt108.dev/api/agent/activity \
 ## Skip portfolio if
 - Project is not registered on portfolio (check with user)
 - Project slug unknown (ask user)
+
+10. **Update architecture map in vault** (MCP tool):
+```
+scan_architecture(project="<project-slug>")
+```
+   - Обновляет файл `<project>/architecture-map.md` в vault
+   - Содержит: модули, зависимости, Mermaid диаграмму
+   - Выполняется автоматически, без подтверждения
