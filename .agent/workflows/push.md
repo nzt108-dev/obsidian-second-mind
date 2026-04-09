@@ -97,3 +97,27 @@ scan_architecture(project="<project-slug>")
    - Обновляет файл `<project>/architecture-map.md` в vault
    - Содержит: модули, зависимости, Mermaid диаграмму
    - Выполняется автоматически, без подтверждения
+
+11. **Upload Data Flow Map to portfolio** (если endpoint доступен):
+```bash
+# Генерируем HTML для текущего проекта
+cd /Users/nzt108/Projects/obsidian-second-mind
+.venv/bin/python -c "
+from scripts.generate_html_maps import analyze_project, generate_html
+from pathlib import Path
+a = analyze_project(Path('<project-dir>'))
+html = generate_html(a)
+Path('/tmp/dataflow.html').write_text(html)
+"
+
+# Отправляем на портфолио
+source /Users/nzt108/Projects/architect-portfolio/.env
+HTML_CONTENT=$(cat /tmp/dataflow.html | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")
+curl -s -X POST https://nzt108.dev/api/agent/dataflow \
+  -H "Authorization: Bearer $PORTFOLIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"projectSlug\": \"<project-slug>\", \"html\": $HTML_CONTENT}"
+```
+   - Отправляет HTML data flow map на портфолио
+   - Будет доступен в /admin/workspaces/<slug>/dataflow
+   - Если endpoint ещё не создан — пропустить этот шаг

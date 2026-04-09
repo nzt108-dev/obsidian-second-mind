@@ -1,791 +1,153 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
+<html lang="ru"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🔄 Data Flow Map — architect-portfolio</title>
+<title>🔄 obsidian-second-mind — Data Flow Map</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e17;color:#c9d1d9;font-family:'Inter',sans-serif;line-height:1.7}
 
-body {
-    background: #0a0e17;
-    color: #c9d1d9;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    line-height: 1.7;
-}
+.header{background:linear-gradient(135deg,#0d1117,#161b22);border-bottom:1px solid rgba(88,166,255,.15);padding:32px 24px;text-align:center}
+.header h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,#58a6ff,#a371f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.header .sub{color:#8b949e;font-size:13px}
+.header .stack{margin-top:8px;color:#a371f7;font-size:12px;font-weight:500}
+.stats{display:flex;justify-content:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.stat{background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.15);padding:6px 16px;border-radius:8px;font-size:12px;color:#8b949e}
+.stat strong{color:#58a6ff;font-size:16px;font-weight:700;margin-right:3px}
 
-/* ─── Header ──────────────────────────────────────── */
-.header {
-    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-    border-bottom: 1px solid rgba(88,166,255,0.2);
-    padding: 40px 0 32px;
-    text-align: center;
-}
-.header h1 {
-    font-size: 32px;
-    font-weight: 800;
-    background: linear-gradient(135deg, #58a6ff, #a371f7, #f778ba);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 8px;
-}
-.header .subtitle {
-    color: #8b949e;
-    font-size: 15px;
-    max-width: 600px;
-    margin: 0 auto;
-}
+.container{max-width:1000px;margin:0 auto;padding:32px 20px}
 
-/* ─── Stats Bar ───────────────────────────────────── */
-.stats-bar {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 24px;
-    flex-wrap: wrap;
-}
-.stat-chip {
-    background: rgba(88,166,255,0.08);
-    border: 1px solid rgba(88,166,255,0.2);
-    padding: 8px 20px;
-    border-radius: 10px;
-    font-size: 13px;
-    color: #8b949e;
-}
-.stat-chip strong {
-    color: #58a6ff;
-    font-size: 18px;
-    font-weight: 700;
-    margin-right: 4px;
-}
+.section{margin-bottom:48px}
+.section-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.section-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.section-head h2{font-size:18px;font-weight:700;color:#e6edf3}
 
-/* ─── Container ───────────────────────────────────── */
-.container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 40px 24px;
-}
+.diagram-card{background:rgba(22,27,34,.5);border:1px solid #30363d;border-radius:14px;padding:24px;margin-bottom:16px;overflow-x:auto}
 
-/* ─── TOC ─────────────────────────────────────────── */
-.toc {
-    background: rgba(22,27,34,0.8);
-    border: 1px solid #30363d;
-    border-radius: 16px;
-    padding: 28px 32px;
-    margin-bottom: 48px;
-}
-.toc h2 {
-    font-size: 16px;
-    color: #58a6ff;
-    margin-bottom: 16px;
-    font-weight: 700;
-}
-.toc-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 8px;
-}
-.toc-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    color: #c9d1d9;
-    text-decoration: none;
-    transition: background 0.2s;
-    font-size: 14px;
-}
-.toc-item:hover { background: rgba(88,166,255,0.08); }
-.toc-num {
-    width: 28px; height: 28px;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(88,166,255,0.15);
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #58a6ff;
-    flex-shrink: 0;
-}
-.toc-label { font-weight: 500; }
-.toc-desc { color: #8b949e; font-size: 12px; margin-left: auto; }
+.callout{border-radius:8px;padding:12px 16px;margin:12px 0;font-size:12px;line-height:1.6;border-left:3px solid}
+.callout-info{background:rgba(88,166,255,.05);border-color:#58a6ff}
+.callout-warn{background:rgba(210,153,34,.05);border-color:#d29922}
+.callout b{color:#e6edf3}
 
-/* ─── Legend ──────────────────────────────────────── */
-.legend {
-    background: rgba(22,27,34,0.6);
-    border: 1px solid #30363d;
-    border-radius: 12px;
-    padding: 20px 28px;
-    margin-bottom: 48px;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
-}
-.legend-title {
-    font-size: 12px;
-    color: #8b949e;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-}
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-}
-.legend-dot {
-    width: 12px; height: 12px;
-    border-radius: 4px;
-    flex-shrink: 0;
-}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:rgba(88,166,255,.06);padding:8px 12px;text-align:left;color:#58a6ff;font-weight:600;border-bottom:2px solid #30363d;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:8px 12px;border-bottom:1px solid #21262d}
+tr:hover td{background:rgba(88,166,255,.03)}
+code{background:rgba(88,166,255,.1);padding:1px 5px;border-radius:3px;font-size:11px;color:#79c0ff;font-family:'SF Mono',monospace}
 
-/* ─── Section ─────────────────────────────────────── */
-.section {
-    margin-bottom: 64px;
-    scroll-margin-top: 20px;
-}
-.section-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 8px;
-}
-.section-icon {
-    width: 48px; height: 48px;
-    border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px;
-    flex-shrink: 0;
-}
-.section-header h2 {
-    font-size: 22px;
-    font-weight: 700;
-    color: #e6edf3;
-}
-.section-meta {
-    color: #8b949e;
-    font-size: 14px;
-    margin-bottom: 24px;
-    padding-left: 64px;
-}
-.section-meta strong { color: #c9d1d9; }
+.services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.svc-card{background:rgba(22,27,34,.6);border:1px solid #30363d;border-radius:10px;padding:14px 16px}
+.svc-card .svc-name{font-weight:600;font-size:13px;color:#e6edf3}
+.svc-card .svc-type{font-size:11px;color:#8b949e;margin-top:2px}
 
-/* ─── Diagram ─────────────────────────────────────── */
-.diagram-card {
-    background: rgba(22,27,34,0.6);
-    border: 1px solid #30363d;
-    border-radius: 16px;
-    padding: 32px;
-    margin-bottom: 24px;
-    overflow-x: auto;
-}
-.mermaid {
-    display: flex;
-    justify-content: center;
-}
-.mermaid svg {
-    max-width: 100%;
-}
+.pages-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.page-chip{background:rgba(88,166,255,.06);border:1px solid #30363d;padding:4px 12px;border-radius:6px;font-size:11px;color:#79c0ff}
 
-/* ─── Callout ─────────────────────────────────────── */
-.callout {
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin: 16px 0;
-    font-size: 13px;
-    line-height: 1.6;
-    border-left: 4px solid;
-}
-.callout-note {
-    background: rgba(88,166,255,0.06);
-    border-color: #58a6ff;
-}
-.callout-tip {
-    background: rgba(46,160,67,0.06);
-    border-color: #2ea043;
-}
-.callout-warn {
-    background: rgba(210,153,34,0.06);
-    border-color: #d29922;
-}
-.callout-title {
-    font-weight: 700;
-    margin-bottom: 4px;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.callout-note .callout-title { color: #58a6ff; }
-.callout-tip .callout-title { color: #2ea043; }
-.callout-warn .callout-title { color: #d29922; }
-
-/* ─── Table ───────────────────────────────────────── */
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    margin: 16px 0;
-}
-.data-table th {
-    background: rgba(88,166,255,0.08);
-    padding: 10px 14px;
-    text-align: left;
-    font-weight: 600;
-    color: #58a6ff;
-    border-bottom: 2px solid #30363d;
-}
-.data-table td {
-    padding: 10px 14px;
-    border-bottom: 1px solid #21262d;
-}
-.data-table tr:hover td {
-    background: rgba(88,166,255,0.04);
-}
-code {
-    background: rgba(88,166,255,0.1);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-family: 'SF Mono', monospace;
-    color: #79c0ff;
-}
-.badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-}
-.badge-tg { background: rgba(0,136,204,0.15); color: #39c5fd; }
-.badge-ai { background: rgba(16,163,127,0.15); color: #3fb68b; }
-.badge-rss { background: rgba(255,152,0,0.15); color: #ffb74d; }
-
-/* ─── Divider ─────────────────────────────────────── */
-hr {
-    border: none;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #30363d 20%, #30363d 80%, transparent);
-    margin: 48px 0;
-}
-
-/* ─── Footer ──────────────────────────────────────── */
-.footer {
-    text-align: center;
-    padding: 40px 0;
-    color: #484f58;
-    font-size: 12px;
-    border-top: 1px solid #21262d;
-}
+hr{border:none;height:1px;background:linear-gradient(90deg,transparent,#30363d 20%,#30363d 80%,transparent);margin:40px 0}
+.footer{text-align:center;padding:24px;color:#484f58;font-size:11px;border-top:1px solid #21262d}
 </style>
-</head>
-<body>
+</head><body>
 
-<!-- ═══════════════ HEADER ═══════════════ -->
 <div class="header">
-    <h1>🔄 Data Flow Map</h1>
-    <div class="subtitle">Полная карта движения данных в системе <strong>architect-portfolio</strong> (nzt108.dev)</div>
-    <div class="stats-bar">
-        <div class="stat-chip"><strong>115</strong> модулей</div>
-        <div class="stat-chip"><strong>13</strong> таблиц БД</div>
-        <div class="stat-chip"><strong>24</strong> API routes</div>
-        <div class="stat-chip"><strong>4</strong> внешних сервиса</div>
-        <div class="stat-chip"><strong>7</strong> потоков данных</div>
+    <h1>🔄 obsidian-second-mind</h1>
+    <div class="sub">Data Flow Map • 2026-04-09</div>
+    <div class="stack">Python</div>
+    <div class="stats">
+        <div class="stat"><strong>29</strong>модулей</div>
+        <div class="stat"><strong>0</strong>API routes</div>
+        <div class="stat"><strong>0</strong>таблиц</div>
+        <div class="stat"><strong>8</strong>сервисов</div>
+        <div class="stat"><strong>10,437</strong>строк</div>
     </div>
 </div>
 
 <div class="container">
 
-<!-- ═══════════════ TOC ═══════════════ -->
-<div class="toc">
-    <h2>📋 Навигация по потокам</h2>
-    <div class="toc-grid">
-        <a href="#flow1" class="toc-item"><span class="toc-num">1</span><span class="toc-label">🌐 Публичный сайт</span><span class="toc-desc">Чтение</span></a>
-        <a href="#flow2" class="toc-item"><span class="toc-num">2</span><span class="toc-label">📬 Контактная форма</span><span class="toc-desc">→ Telegram</span></a>
-        <a href="#flow3" class="toc-item"><span class="toc-num">3</span><span class="toc-label">🤖 AI Agent</span><span class="toc-desc">Автоматика</span></a>
-        <a href="#flow4" class="toc-item"><span class="toc-num">4</span><span class="toc-label">📝 Авто-блог</span><span class="toc-desc">OpenAI + RSS</span></a>
-        <a href="#flow5" class="toc-item"><span class="toc-num">5</span><span class="toc-label">🔒 Admin Dashboard</span><span class="toc-desc">CRUD</span></a>
-        <a href="#flow6" class="toc-item"><span class="toc-num">6</span><span class="toc-label">📈 CRM + Аналитика</span><span class="toc-desc">Трекинг</span></a>
-        <a href="#flow7" class="toc-item"><span class="toc-num">7</span><span class="toc-label">🧩 Agent Hub</span><span class="toc-desc">Предложения</span></a>
-    </div>
-</div>
-
-<!-- ═══════════════ LEGEND ═══════════════ -->
-<div class="legend">
-    <span class="legend-title">Легенда</span>
-    <div class="legend-item"><div class="legend-dot" style="background:#58a6ff"></div>Пользователь</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#2ea043"></div>API Endpoint</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#9C27B0"></div>База данных</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>AI Agent / Внешний</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#0088cc"></div>Telegram</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#10A37F"></div>OpenAI</div>
-</div>
-
-<!-- ═══════════════ FLOW 1 ═══════════════ -->
-<div class="section" id="flow1">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(88,166,255,0.1)">🌐</div>
-        <h2>Поток 1: Публичный сайт</h2>
-    </div>
-    <div class="section-meta">
-        <strong>Кто запускает:</strong> Любой посетитель &nbsp;•&nbsp;
-        <strong>Направление:</strong> Чтение данных из БД &nbsp;•&nbsp;
-        <strong>Объём:</strong> ~90% всех запросов
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-flowchart LR
-    V["👤 Посетитель"] -->|"заходит"| Home["🏠 Главная\nnzt108.dev"]
-    V -->|"кликает"| Proj["📂 Проекты\n/projects"]
-    V -->|"кликает"| Blog["📝 Блог\n/blog"]
-
-    Home -->|"fetch"| A1["GET\n/api/projects"]
-    Home -->|"fetch"| A2["GET\n/api/skills"]
-    Proj -->|"fetch"| A3["GET\n/api/projects/slug"]
-    Blog -->|"SSR"| A4["prisma.article\n.findMany"]
-
-    A1 -->|"findMany"| DB[("💾 Turso")]
-    A2 -->|"findMany"| DB
-    A3 -->|"findUnique\n+ roadmap"| DB
-    A4 -->|"query"| DB
-
-    DB -->|"JSON"| Home
-    DB -->|"JSON"| Proj
-    DB -->|"HTML"| Blog
-
-    style V fill:#58a6ff,color:#fff
-    style DB fill:#9C27B0,color:#fff
-    style A1 fill:#2ea043,color:#fff
-    style A2 fill:#2ea043,color:#fff
-    style A3 fill:#2ea043,color:#fff
-    style A4 fill:#2ea043,color:#fff
-        </div>
-    </div>
-    <div class="callout callout-note">
-        <div class="callout-title">ℹ️ Как это работает</div>
-        Посетитель открывает страницу → Next.js запрашивает данные через Prisma ORM → Turso (LibSQL cloud-база) возвращает JSON → страница рендерится и отдаётся в браузер. Используется ISR кеширование.
-    </div>
-</div>
-
-<hr>
-
-<!-- ═══════════════ FLOW 2 ═══════════════ -->
-<div class="section" id="flow2">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(0,136,204,0.1)">📬</div>
-        <h2>Поток 2: Контактная форма</h2>
-    </div>
-    <div class="section-meta">
-        <strong>Кто запускает:</strong> Потенциальный клиент &nbsp;•&nbsp;
-        <strong>Направление:</strong> Запись в БД + Push уведомление &nbsp;•&nbsp;
-        <strong>Внешние сервисы:</strong> <span class="badge badge-tg">Telegram Bot</span>
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-flowchart LR
-    User["👤 Клиент\nзаполняет форму"] -->|"POST\n{name, email, message}"| API["⚡ /api/contact"]
-    API -->|"1. Сохранить"| DB[("💾 Turso\nContactSubmissions")]
-    API -->|"2. Уведомить"| TG["📱 Telegram\nBot API"]
-    TG -->|"push"| Phone["📲 Телефон\nадмина"]
-    API -->|"3. Ответ"| OK["✅ 201\nСпасибо!"]
-    OK --> User
-
-    style User fill:#58a6ff,color:#fff
-    style DB fill:#9C27B0,color:#fff
-    style TG fill:#0088cc,color:#fff
-    style Phone fill:#0088cc,color:#fff
-    style API fill:#2ea043,color:#fff
-        </div>
-    </div>
-    <div class="callout callout-tip">
-        <div class="callout-title">💡 Порядок операций</div>
-        <strong>Сначала</strong> — сохранение в БД (чтобы не потерять заявку). <strong>Потом</strong> — Telegram (может упасть, это не критично). <strong>Последним</strong> — ответ клиенту. Так гарантируется, что ни одна заявка не теряется.
-    </div>
-
-    <table class="data-table">
-        <thead><tr><th>Поле</th><th>Тип</th><th>Описание</th></tr></thead>
-        <tbody>
-            <tr><td><code>name</code></td><td>string</td><td>Имя отправителя</td></tr>
-            <tr><td><code>email</code></td><td>string</td><td>Email для связи</td></tr>
-            <tr><td><code>message</code></td><td>text</td><td>Текст заявки</td></tr>
-            <tr><td><code>read</code></td><td>boolean</td><td>Прочитано ли админом (по умолчанию false)</td></tr>
-            <tr><td><code>createdAt</code></td><td>datetime</td><td>Когда отправлено</td></tr>
-        </tbody>
-    </table>
-</div>
-
-<hr>
-
-<!-- ═══════════════ FLOW 3 ═══════════════ -->
-<div class="section" id="flow3">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(255,152,0,0.1)">🤖</div>
-        <h2>Поток 3: AI Agent (Автономный помощник)</h2>
-    </div>
-    <div class="section-meta">
-        <strong>Кто запускает:</strong> AI-агент (Gemini) после каждого git push &nbsp;•&nbsp;
-        <strong>Направление:</strong> Запись логов и проектов &nbsp;•&nbsp;
-        <strong>Авторизация:</strong> Bearer token
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-flowchart TB
-    Agent["🤖 AI Agent\n(Gemini в IDE)"] -->|"curl + Bearer token"| Auth["🔐 Authorization\nPORTFOLIO_API_KEY"]
-
-    Auth -->|"✅"| E1["POST\n/api/agent/activity"]
-    Auth -->|"✅"| E2["POST\n/api/agent/projects"]
-    Auth -->|"✅"| E3["POST\n/api/agent/crm"]
-    Auth -->|"✅"| E4["POST\n/api/agent/suggestions"]
-
-    E1 -->|"create"| D1[("ActivityLog")]
-    E2 -->|"upsert"| D2[("Projects")]
-    E3 -->|"create"| D3[("CrmTasks")]
-    E4 -->|"create"| D4[("AgentSuggestions")]
-
-    D1 --> View1["📋 Activity Feed"]
-    D4 --> View2["🧩 Agent Hub"]
-
-    style Agent fill:#FF9800,color:#fff
-    style D1 fill:#9C27B0,color:#fff
-    style D2 fill:#9C27B0,color:#fff
-    style D3 fill:#9C27B0,color:#fff
-    style D4 fill:#9C27B0,color:#fff
-    style E1 fill:#2ea043,color:#fff
-    style E2 fill:#2ea043,color:#fff
-    style E3 fill:#2ea043,color:#fff
-    style E4 fill:#2ea043,color:#fff
-        </div>
-    </div>
-    <div class="callout callout-note">
-        <div class="callout-title">ℹ️ Как это работает</div>
-        В файле <code>GEMINI.md</code> прописано правило: после каждого <code>git push</code> агент отправляет <code>curl</code> запрос с Bearer-токеном. Портфолио обновляется автоматически, без участия человека.
-    </div>
-    <div class="callout callout-tip">
-        <div class="callout-title">💡 Пример запроса</div>
-        <code>POST /api/agent/activity</code> с телом:<br>
-        <code>{ "projectSlug": "obsidian-second-mind", "type": "push", "title": "feat: v1.1.0 — Auto Architect" }</code>
-    </div>
-</div>
-
-<hr>
-
-<!-- ═══════════════ FLOW 4 ═══════════════ -->
-<div class="section" id="flow4">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(16,163,127,0.1)">📝</div>
-        <h2>Поток 4: Авто-генерация блога</h2>
-    </div>
-    <div class="section-meta">
-        <strong>Кто запускает:</strong> Vercel Cron (по расписанию, каждые 24ч) &nbsp;•&nbsp;
-        <strong>Внешние сервисы:</strong> <span class="badge badge-rss">RSS Parser</span> <span class="badge badge-ai">OpenAI GPT-4</span> &nbsp;•&nbsp;
-        <strong>Стоимость:</strong> ~$1.5/мес
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-flowchart TB
-    Cron["⏰ Vercel Cron\nкаждые 24ч"] -->|"GET"| API["⚡ /api/cron/\ngenerate-article"]
-
-    API -->|"Шаг 1:\nПарсинг новостей"| RSS["📡 RSS Feed\nТех-блоги"]
-    RSS -->|"статьи"| API
-
-    API -->|"Шаг 2:\nВыбор темы"| Topics[("💾 Topics\nused: false")]
-    Topics -->|"тема"| API
-
-    API -->|"Шаг 3:\nГенерация"| GPT["🧠 OpenAI GPT-4\nchat.completions"]
-    GPT -->|"markdown\n~1500 слов"| API
-
-    API -->|"Шаг 4:\nСохранение"| Articles[("💾 Articles")]
-    Articles -->|"доступна"| Blog["📝 /blog\nНовая статья!"]
-
-    style Cron fill:#607D8B,color:#fff
-    style RSS fill:#FF9800,color:#fff
-    style GPT fill:#10A37F,color:#fff
-    style Topics fill:#9C27B0,color:#fff
-    style Articles fill:#9C27B0,color:#fff
-    style API fill:#2ea043,color:#fff
-        </div>
-    </div>
-    <div class="callout callout-warn">
-        <div class="callout-title">⚠️ Стоимость</div>
-        Каждый вызов OpenAI ≈ $0.02–0.05. При ежедневной генерации это ~$1.5/месяц. Перед генерацией проверяется, есть ли неиспользованная тема (<code>used: false</code>), чтобы не создавать дубли.
-    </div>
-</div>
-
-<hr>
-
-<!-- ═══════════════ FLOW 5 ═══════════════ -->
-<div class="section" id="flow5">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(46,160,67,0.1)">🔒</div>
-        <h2>Поток 5: Admin Dashboard</h2>
-    </div>
-    <div class="section-meta">
-        <strong>Кто запускает:</strong> Владелец сайта &nbsp;•&nbsp;
-        <strong>Авторизация:</strong> JWT cookie (httpOnly) &nbsp;•&nbsp;
-        <strong>Направление:</strong> Полный CRUD проектов и настроек
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-flowchart TB
-    Admin["🔧 Admin"] -->|"пароль"| Auth["POST\n/api/admin/auth"]
-    Auth -->|"🍪 JWT cookie"| Dash["📊 Dashboard\n/admin"]
-
-    Dash -->|"статистика"| API1["GET\n/api/admin/dashboard"]
-    Dash -->|"создать"| API2["POST\n/api/projects"]
-    Dash -->|"редактировать"| API3["PUT\n/api/projects/[id]"]
-    Dash -->|"удалить"| API4["DELETE\n/api/projects/[id]"]
-
-    API1 -->|"COUNT"| DB[("💾 Turso")]
-    API2 -->|"create +\nroadmapItems"| DB
-    API3 -->|"update"| DB
-    API4 -->|"delete +\ncascade roadmap"| DB
-
-    style Admin fill:#4CAF50,color:#fff
-    style DB fill:#9C27B0,color:#fff
-    style Auth fill:#2ea043,color:#fff
-    style API1 fill:#2ea043,color:#fff
-    style API2 fill:#2ea043,color:#fff
-    style API3 fill:#2ea043,color:#fff
-    style API4 fill:#2ea043,color:#fff
-        </div>
-    </div>
-    <div class="callout callout-note">
-        <div class="callout-title">ℹ️ Безопасность</div>
-        JWT хранится в <code>httpOnly</code> cookie — JavaScript не может его прочитать. Все <code>/admin</code> маршруты проверяют cookie перед выполнением. При удалении проекта каскадно удаляются все его <code>RoadmapItems</code>.
-    </div>
-</div>
-
-<hr>
-
-<!-- ═══════════════ FLOW 6 ═══════════════ -->
-<div class="section" id="flow6">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(163,113,247,0.1)">📈</div>
-        <h2>Поток 6: CRM + Аналитика</h2>
-    </div>
-    <div class="section-meta">
-        <strong>Кто запускает:</strong> Посетители (автоматически) + AI Agent (лиды) &nbsp;•&nbsp;
-        <strong>Направление:</strong> Сбор метрик и управление воронкой
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-flowchart LR
-    Visitor["👤 Посетитель"] -->|"page load"| Track["📊 Analytics\nTracker"]
-    Track -->|"POST\n{page, referrer, utm}"| API1["⚡ /api/admin/\nanalytics"]
-    API1 -->|"create"| PV[("PageViews")]
-
-    Agent["🤖 AI Agent"] -->|"POST\n{company, stage}"| API2["⚡ /api/agent/\ncrm"]
-    API2 -->|"create"| CRM[("CrmTasks")]
-
-    PV -->|"агрегация"| Dash1["📊 Analytics\nграфики, UTM"]
-    CRM --> Kanban["📋 Kanban\nLead → Contact →\nProposal → Won"]
-    Kanban -->|"drag & drop"| CRM
-
-    style Visitor fill:#58a6ff,color:#fff
-    style Agent fill:#FF9800,color:#fff
-    style PV fill:#9C27B0,color:#fff
-    style CRM fill:#9C27B0,color:#fff
-    style API1 fill:#2ea043,color:#fff
-    style API2 fill:#2ea043,color:#fff
-        </div>
-    </div>
-    <div class="callout callout-tip">
-        <div class="callout-title">💡 UTM трекинг</div>
-        Если посетитель пришёл с <code>?utm_source=twitter&utm_medium=post</code>, это сохраняется в <code>PageViews</code> и отображается в аналитике — можно видеть, откуда приходит трафик.
-    </div>
-</div>
-
-<hr>
-
-<!-- ═══════════════ FLOW 7 ═══════════════ -->
-<div class="section" id="flow7">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(247,120,186,0.1)">🧩</div>
-        <h2>Поток 7: Agent Hub</h2>
-    </div>
-    <div class="section-meta">
-        <strong>Кто запускает:</strong> AI Agent предлагает → Admin решает &nbsp;•&nbsp;
-        <strong>Суть:</strong> Очередь предложений от ИИ
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-flowchart LR
-    Agent["🤖 AI Agent"] -->|"POST\n{title, priority}"| API["⚡ /api/agent/\nsuggestions"]
-    API -->|"create\nstatus: pending"| DB[("💾 Agent\nSuggestions")]
-
-    DB -->|"отображается"| Hub["📋 Agent Hub\n/admin/agent-hub"]
-
-    Hub -->|"👍"| Approve["status:\napproved"]
-    Hub -->|"👎"| Reject["status:\nrejected"]
-    Hub -->|"▶️"| Execute["Запуск\nв IDE"]
-
-    Approve --> DB
-    Reject --> DB
-
-    style Agent fill:#FF9800,color:#fff
-    style DB fill:#9C27B0,color:#fff
-    style Hub fill:#4CAF50,color:#fff
-    style API fill:#2ea043,color:#fff
-        </div>
-    </div>
-</div>
-
-<hr>
-
-<!-- ═══════════════ DB SCHEMA ═══════════════ -->
-<div class="section" id="schema">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(156,39,176,0.1)">🗄️</div>
-        <h2>Полная схема базы данных</h2>
-    </div>
-    <div class="section-meta">
-        <strong>СУБД:</strong> Turso (LibSQL) &nbsp;•&nbsp;
-        <strong>ORM:</strong> Prisma &nbsp;•&nbsp;
-        <strong>Таблиц:</strong> 13
-    </div>
-    <div class="diagram-card">
-        <div class="mermaid">
-erDiagram
-    Project ||--o{ RoadmapItem : "этапы"
-    Project ||--o{ ActivityLog : "логи"
-    Topic ||--o{ Article : "статьи"
-
-    Project {
-        int id PK
-        string name
-        string slug UK
-        text description
-        string stack
-        string status
-        float roi
-    }
-    RoadmapItem {
-        int id PK
-        int projectId FK
-        string title
-        string status
-    }
-    Article {
-        int id PK
-        string title
-        string slug UK
-        text content
-        int topicId FK
-    }
-    ContactSubmission {
-        int id PK
-        string name
-        string email
-        text message
-        boolean read
-    }
-    ActivityLog {
-        int id PK
-        string projectSlug
-        string type
-        string title
-    }
-    CrmTask {
-        int id PK
-        string company
-        string stage
-        float dealValue
-    }
-    AgentSuggestion {
-        int id PK
-        string title
-        string status
-        string priority
-    }
-    PageView {
-        int id PK
-        string page
-        string referrer
-        string utm_source
-    }
-        </div>
-    </div>
-</div>
-
-<hr>
-
-<!-- ═══════════════ SUMMARY TABLE ═══════════════ -->
-<div class="section" id="summary">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(88,166,255,0.1)">🔑</div>
-        <h2>Сводная таблица: Все точки входа данных</h2>
-    </div>
-    <table class="data-table">
-        <thead>
-            <tr><th>#</th><th>Источник</th><th>Метод</th><th>Endpoint</th><th>Действие</th><th>Таблица</th><th>Побочные эффекты</th></tr>
-        </thead>
-        <tbody>
-            <tr><td>1</td><td>👤 Visitor</td><td>GET</td><td><code>/api/projects</code></td><td>Список проектов</td><td>Projects</td><td>—</td></tr>
-            <tr><td>2</td><td>👤 Visitor</td><td>GET</td><td><code>/api/projects/[slug]</code></td><td>Детали проекта</td><td>Projects + Roadmap</td><td>—</td></tr>
-            <tr><td>3</td><td>👤 Visitor</td><td>GET</td><td><code>/api/skills</code></td><td>Навыки</td><td>Skills</td><td>—</td></tr>
-            <tr><td>4</td><td>👤 Visitor</td><td><strong>POST</strong></td><td><code>/api/contact</code></td><td>Отправка заявки</td><td>ContactSubmissions</td><td><span class="badge badge-tg">📱 Telegram</span></td></tr>
-            <tr><td>5</td><td>👤 Visitor</td><td>auto</td><td><code>/api/admin/analytics</code></td><td>Page view</td><td>PageViews</td><td>—</td></tr>
-            <tr><td>6</td><td>🔧 Admin</td><td>POST</td><td><code>/api/admin/auth</code></td><td>Логин</td><td>—</td><td>🍪 JWT cookie</td></tr>
-            <tr><td>7</td><td>🔧 Admin</td><td>CRUD</td><td><code>/api/projects/*</code></td><td>Управление</td><td>Projects + Roadmap</td><td>—</td></tr>
-            <tr><td>8</td><td>🔧 Admin</td><td>CRUD</td><td><code>/api/admin/blog</code></td><td>Блог</td><td>Articles</td><td>—</td></tr>
-            <tr><td>9</td><td>🤖 Agent</td><td>POST</td><td><code>/api/agent/activity</code></td><td>Лог действия</td><td>ActivityLog</td><td>—</td></tr>
-            <tr><td>10</td><td>🤖 Agent</td><td>POST</td><td><code>/api/agent/projects</code></td><td>Проект</td><td>Projects</td><td>—</td></tr>
-            <tr><td>11</td><td>🤖 Agent</td><td>POST</td><td><code>/api/agent/crm</code></td><td>Лид</td><td>CrmTasks</td><td>—</td></tr>
-            <tr><td>12</td><td>🤖 Agent</td><td>POST</td><td><code>/api/agent/suggestions</code></td><td>Предложение</td><td>AgentSuggestions</td><td>—</td></tr>
-            <tr><td>13</td><td>⏰ Cron</td><td>GET</td><td><code>/api/cron/generate-article</code></td><td>Генерация статьи</td><td>Articles + Topics</td><td><span class="badge badge-ai">🧠 OpenAI</span> <span class="badge badge-rss">📡 RSS</span></td></tr>
-        </tbody>
-    </table>
-</div>
-
-<hr>
-
-<!-- ═══════════════ EXTERNAL SERVICES ═══════════════ -->
+<!-- ═══ MAIN FLOW ═══ -->
 <div class="section">
-    <div class="section-header">
-        <div class="section-icon" style="background:rgba(255,152,0,0.1)">🌍</div>
+    <div class="section-head">
+        <div class="section-icon" style="background:rgba(88,166,255,.1)">🔄</div>
+        <h2>Общий поток данных</h2>
+    </div>
+    <div class="callout callout-info">
+        <b>Как читать:</b> Стрелки показывают направление движения данных. Каждый блок — это компонент системы. Цвета: 🔵 пользователь, 🟢 API, 🟣 база данных, 🟠 внешний сервис.
+    </div>
+    <div class="diagram-card">
+        <div class="mermaid">flowchart TB
+    User["👤 Пользователь"]
+    Ext0["🌐 Telegram Bot"]
+    Ext1["🌐 OpenAI"]
+    Ext2["🌐 Stripe"]
+    Ext3["🌐 Firebase"]
+    style User fill:#58a6ff,color:#fff
+    style Ext0 fill:#FF9800,color:#fff
+    style Ext1 fill:#FF9800,color:#fff
+    style Ext2 fill:#FF9800,color:#fff
+    style Ext3 fill:#FF9800,color:#fff</div>
+    </div>
+</div>
+
+<hr>
+
+<!-- ═══ API ROUTES ═══ -->
+
+
+<!-- ═══ DATABASE ═══ -->
+
+
+<!-- ═══ EXTERNAL SERVICES ═══ -->
+
+<div class="section">
+    <div class="section-head">
+        <div class="section-icon" style="background:rgba(255,152,0,.1)">🌍</div>
         <h2>Внешние сервисы</h2>
     </div>
-    <table class="data-table">
-        <thead>
-            <tr><th>Сервис</th><th>Зачем</th><th>Где используется</th><th>Стоимость</th></tr>
-        </thead>
-        <tbody>
-            <tr><td><strong>Turso</strong> (LibSQL)</td><td>Основная база данных</td><td>Все API routes через Prisma</td><td>Free tier (500MB)</td></tr>
-            <tr><td><strong>Vercel</strong></td><td>Хостинг + Cron Jobs</td><td>Деплой сайта, авто-блог</td><td>Free tier</td></tr>
-            <tr><td><strong>Telegram Bot</strong></td><td>Push-уведомления</td><td>Contact form → lib/telegram.ts</td><td>Бесплатно</td></tr>
-            <tr><td><strong>OpenAI GPT-4</strong></td><td>Генерация статей</td><td>/api/cron/generate-article</td><td>~$1.5/мес</td></tr>
-            <tr><td><strong>RSS Parser</strong></td><td>Парсинг новостей</td><td>/api/cron/generate-article</td><td>Бесплатно</td></tr>
-            <tr><td><strong>Prisma</strong></td><td>ORM для TypeScript</td><td>Все запросы к Turso</td><td>Бесплатно</td></tr>
-        </tbody>
-    </table>
+    <div class="services-grid"><div class="svc-card">
+            <div class="svc-name">📱 Telegram Bot</div>
+        </div>
+<div class="svc-card">
+            <div class="svc-name">🧠 OpenAI</div>
+        </div>
+<div class="svc-card">
+            <div class="svc-name">💳 Stripe</div>
+        </div>
+<div class="svc-card">
+            <div class="svc-name">🔥 Firebase</div>
+        </div>
+<div class="svc-card">
+            <div class="svc-name">💚 Supabase</div>
+        </div>
+<div class="svc-card">
+            <div class="svc-name">⚡ Redis</div>
+        </div>
+<div class="svc-card">
+            <div class="svc-name">▲ Vercel</div>
+        </div>
+<div class="svc-card">
+            <div class="svc-name">📝 Notion API</div>
+        </div>
 </div>
-
-</div><!-- container -->
-
-<div class="footer">
-    Auto-generated by Obsidian Second Mind v1.1.0 — scan_architecture<br>
-    architect-portfolio • nzt108.dev
 </div>
+<hr>
+
+
+<!-- ═══ PAGES ═══ -->
+
+
+</div>
+<div class="footer">Auto-generated by Obsidian Second Mind v1.1 • scan_architecture</div>
 
 <script>
 mermaid.initialize({
-    theme: 'dark',
-    securityLevel: 'loose',
-    flowchart: { htmlLabels: true, curve: 'basis' },
-    themeVariables: {
-        primaryColor: '#1f2937',
-        primaryTextColor: '#c9d1d9',
-        primaryBorderColor: '#30363d',
-        lineColor: '#58a6ff',
-        secondaryColor: '#161b22',
-        tertiaryColor: '#0d1117',
-        fontFamily: 'Inter, sans-serif',
+    theme:'dark', securityLevel:'loose',
+    flowchart:{htmlLabels:true,curve:'basis'},
+    themeVariables:{
+        primaryColor:'#1f2937',primaryTextColor:'#c9d1d9',
+        primaryBorderColor:'#30363d',lineColor:'#58a6ff',
+        fontFamily:'Inter, sans-serif'
     }
 });
 </script>
-
-</body>
-</html>
+</body></html>
