@@ -1,5 +1,10 @@
 """MCP Server for Obsidian Second Mind.
 
+v0.9.0: Agent Memory.
+- Session save/load: save_session, load_session tools
+- Enhanced wake-up: get_enhanced_wakeup tool (standard + memory + KG)
+- Pre-computed wake-up cache in _memory/
+
 v0.8.0: Temporal Brain.
 - Temporal KG: kg_add_fact, kg_invalidate, kg_timeline tools
 - Contradiction detection: kg_check_contradictions tool
@@ -52,6 +57,7 @@ from obsidian_bridge.graph import (
     ContradictionDetector,
 )
 from obsidian_bridge.fact_extractor import FactExtractor
+from obsidian_bridge.hooks import SessionHooks, generate_enhanced_wakeup
 
 logger = logging.getLogger(__name__)
 
@@ -745,6 +751,69 @@ async def list_tools() -> list[Tool]:
                 "properties": {},
             },
         ),
+        # --- v0.9.0: Agent Memory ---
+        Tool(
+            name="save_session",
+            description="Save current session context to vault for future recall. "
+                        "Captures git state, uncommitted changes, recent commits, decisions, "
+                        "and next steps. Creates both JSON snapshot and vault note. "
+                        "Call this at the END of a session or before context loss.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project slug to save session for",
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "Brief summary of what was done this session",
+                    },
+                    "next_steps": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Prioritized list of what to do next session",
+                    },
+                    "blockers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Known blockers or issues",
+                    },
+                },
+                "required": ["project"],
+            },
+        ),
+        Tool(
+            name="load_session",
+            description="Load the most recent session snapshot for a project. "
+                        "Returns git state, what was done, uncommitted changes, "
+                        "next steps, and blockers. Use at session START for instant recall.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project slug to load last session for",
+                    },
+                },
+                "required": ["project"],
+            },
+        ),
+        Tool(
+            name="get_enhanced_wakeup",
+            description="Enhanced wake-up context combining standard context, last session memory, "
+                        "and temporal KG facts. Use this instead of get_wakeup_context for "
+                        "richer session start with full memory recall.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Focus project for enhanced context",
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -1285,6 +1354,47 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         detector = ContradictionDetector(tkg)
         report = detector.to_markdown()
         return [TextContent(type="text", text=report)]
+
+    # --- v0.9.0: Agent Memory ---
+
+    elif name == "save_session":
+        settings = get_settings()
+        hooks = SessionHooks(vault, settings.project_base_dirs)
+        snapshot = hooks.save_session(
+            project=arguments["project"],
+            summary=arguments.get("summary", ""),
+            next_steps=arguments.get("next_steps"),
+            blockers=arguments.get("blockers"),
+        )
+
+        result = (
+            f"✅ Session saved for **{snapshot.project}** at {snapshot.timestamp}\n\n"
+            f"{snapshot.to_markdown()}"
+        )
+        return [TextContent(type="text", text=result)]
+
+    elif name == "load_session":
+        settings = get_settings()
+        hooks = SessionHooks(vault, settings.project_base_dirs)
+        snapshot = hooks.load_last_session(arguments["project"])
+
+        if not snapshot:
+            return [TextContent(
+                type="text",
+                text=f"No saved session found for '{arguments['project']}'. "
+                     f"This is the first session.",
+            )]
+
+        return [TextContent(type="text", text=snapshot.to_markdown())]
+
+    elif name == "get_enhanced_wakeup":
+        settings = get_settings()
+        context = generate_enhanced_wakeup(
+            vault_path=vault,
+            project=arguments.get("project", ""),
+            project_base_dirs=settings.project_base_dirs,
+        )
+        return [TextContent(type="text", text=context)]
 
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 

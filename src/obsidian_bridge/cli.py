@@ -309,5 +309,57 @@ def radar(ctx, category, notify):
                 console.print("[green]📱 Telegram alert sent![/]")
 
 
+@cli.command()
+@click.argument("project")
+@click.option("--summary", "-s", default="", help="Session summary")
+@click.option("--next", "next_steps", multiple=True, help="Next steps (repeat for multiple)")
+@click.option("--blocker", "blockers", multiple=True, help="Blockers (repeat for multiple)")
+@click.pass_context
+def save(ctx, project, summary, next_steps, blockers):
+    """💾 Save current session context to vault (Agent Memory)."""
+    from obsidian_bridge.hooks import SessionHooks
+
+    settings = ctx.obj["settings"]
+    hooks = SessionHooks(settings.vault_path, settings.project_base_dirs)
+
+    console.print(f"[bold cyan]💾 Saving session for {project}...[/]")
+
+    snapshot = hooks.save_session(
+        project=project,
+        summary=summary,
+        next_steps=list(next_steps),
+        blockers=list(blockers),
+    )
+
+    console.print(f"[green]✅ Session saved at {snapshot.timestamp}[/]")
+    if snapshot.recent_commits:
+        console.print(f"  Commits: {len(snapshot.recent_commits)}")
+    if snapshot.uncommitted_changes:
+        console.print(f"  [yellow]⚠️ Uncommitted: {len(snapshot.uncommitted_changes)} files[/]")
+    if snapshot.next_steps:
+        console.print("  Next steps:")
+        for s in snapshot.next_steps:
+            console.print(f"    → {s}")
+
+
+@cli.command("emergency-save")
+@click.argument("project")
+@click.pass_context
+def emergency_save(ctx, project):
+    """⚠️ Fast emergency save — minimal context dump before session loss."""
+    from obsidian_bridge.hooks import SessionHooks
+
+    settings = ctx.obj["settings"]
+    hooks = SessionHooks(settings.vault_path, settings.project_base_dirs)
+
+    console.print(f"[bold yellow]⚠️ Emergency save for {project}...[/]")
+
+    snapshot = hooks.emergency_save(project)
+
+    console.print(f"[green]✅ Emergency snapshot saved at {snapshot.timestamp}[/]")
+    if snapshot.uncommitted_changes:
+        console.print(f"  [yellow]Uncommitted: {len(snapshot.uncommitted_changes)} files[/]")
+
+
 if __name__ == "__main__":
     cli()
