@@ -23,6 +23,7 @@ Behavior:
     - Photos with caption → caption saved as note
 """
 import logging
+import os
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -32,6 +33,11 @@ import httpx
 from obsidian_bridge.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Ensure Homebrew binaries (ffmpeg) are in PATH on macOS
+_brew_path = "/opt/homebrew/bin"
+if os.path.isdir(_brew_path) and _brew_path not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _brew_path + ":" + os.environ.get("PATH", "")
 
 # ---------------------------------------------------------------------------
 # Media Processing (lazy imports — graceful degradation if not installed)
