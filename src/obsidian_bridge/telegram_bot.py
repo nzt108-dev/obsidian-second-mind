@@ -143,6 +143,79 @@ async def _fetch_page_title(url: str) -> str:
         return url
 
 
+async def _fetch_page_content(url: str, max_chars: int = 3000) -> tuple[str, str]:
+    """Fetch page title AND main text content from URL.
+
+    Returns (title, content). Content is cleaned article text
+    with HTML tags stripped. Returns ("", "") on failure.
+    """
+    try:
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=True,
+            headers={"User-Agent": "ObsidianSecondMind/1.2"},
+        ) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            html = resp.text
+
+        # Extract title
+        title_match = re.search(r"<title[^>]*>([^<]+)</title>", html, re.IGNORECASE)
+        title = title_match.group(1).strip() if title_match else ""
+
+        # Extract content — try <article>, then <main>, then <body>
+        content = ""
+        for tag in ["article", "main", "body"]:
+            pattern = re.compile(
+                rf"<{tag}[^>]*>(.*?)</{tag}>", re.DOTALL | re.IGNORECASE
+            )
+            match = pattern.search(html)
+            if match:
+                content = match.group(1)
+                break
+
+        if not content:
+            content = html
+
+        # Remove unwanted tags: script, style, nav, header, footer, aside
+        for tag in ["script", "style", "nav", "header", "footer", "aside",
+                     "noscript", "iframe", "svg", "form"]:
+            content = re.sub(
+                rf"<{tag}[^>]*>.*?</{tag}>", "", content,
+                flags=re.DOTALL | re.IGNORECASE,
+            )
+
+        # Remove all HTML tags
+        content = re.sub(r"<[^>]+>", " ", content)
+
+        # Clean up whitespace
+        content = re.sub(r"[ \t]+", " ", content)
+        content = re.sub(r"\n{3,}", "\n\n", content)
+
+        # Decode HTML entities
+        content = (
+            content
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", '"')
+            .replace("&#39;", "'")
+            .replace("&nbsp;", " ")
+        )
+
+        content = content.strip()
+
+        # Truncate
+        if len(content) > max_chars:
+            content = content[:max_chars] + "\n\n...(truncated)"
+
+        return title, content
+
+    except Exception as e:
+        logger.warning(f"Failed to fetch content for {url}: {e}")
+        return "", ""
+
+
 def _slugify(text: str, max_length: int = 60) -> str:
     """Convert text to filename-safe slug."""
     slug = text.lower().strip()
@@ -455,10 +528,14 @@ class TelegramCapture:
 
     async def _save_link(self, update, text: str, urls: list[str], project: str,
                          is_forwarded: bool, forward_info: str):
-        """Save text with URLs as a research/link note."""
-        # Fetch title for the first URL
+        """Save text with URLs as a research/link note with extracted content."""
+        # Fetch title AND content for the primary URL
         primary_url = urls[0]
-        page_title = await _fetch_page_title(primary_url)
+        page_title, page_content = await _fetch_page_content(primary_url)
+
+        # Fallback title
+        if not page_title:
+            page_title = await _fetch_page_title(primary_url)
 
         # Build content
         content_parts = []
@@ -468,7 +545,7 @@ class TelegramCapture:
             else:
                 content_parts.append(f"**URL**: {url}")
 
-        # Text without URLs = description
+        # Text without URLs = user's description/notes
         description = text
         for url in urls:
             description = description.replace(url, "").strip()
@@ -478,8 +555,19 @@ class TelegramCapture:
         if forward_info:
             content_parts.append(forward_info)
 
+        # Add extracted article content
+        if page_content:
+            content_parts.append("\n---\n")
+            content_parts.append("## 📄 Article Content\n")
+            content_parts.append(page_content)
+        else:
+            content_parts.append(
+                "\n> ⚠️ Could not extract page content "
+                "(may require JS or login)"
+            )
+
         source_label = "Forwarded" if is_forwarded else "Captured"
-        content_parts.append(f"\n> 🔗 {source_label} via Telegram")
+        content_parts.append(f"\n---\n> 🔗 {source_label} via Telegram")
 
         tags = ["link", "telegram", "research"]
         if is_forwarded:
@@ -497,9 +585,13 @@ class TelegramCapture:
 
         _append_to_log(self.vault, "telegram_link", project, page_title[:60])
         rel = path.relative_to(self.vault)
+
+        # Show content preview in reply
+        preview = page_content[:150] + "..." if page_content else "⚠️ no content"
         await self._reply(update,
             f"🔗 → <code>{rel}</code>\n"
-            f"📰 {page_title}"
+            f"📰 {page_title}\n"
+            f"📄 <i>{_escape_md(preview)}</i>"
         )
 
     async def handle_voice(self, update, context):
