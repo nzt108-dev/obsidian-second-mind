@@ -291,3 +291,47 @@ None
 1. v1.0.0 — Ultimate Brain (polish, README, benchmarks, PyPI)
 2. Install Whisper + Tesseract
 3. Test Telegram bot live
+
+---
+
+## Session 2026-04-12 — Antigravity MCP Servers Integration
+
+### What Was Done
+1. **Antigravity.codes Analysis** — проанализирован каталог с 1500+ MCP серверами
+2. **7 MCP серверов отобраны** по критериям полезности для нашей экосистемы:
+   - Notion (Official makenotion, 4.2k⭐)
+   - Vercel (Official Remote OAuth)
+   - Stripe (Official stripe, 1.5k⭐)
+   - Playwright (Official Microsoft, 30.7k⭐)
+   - Polymarket (Community MIT, Rust)
+   - Figma (уже был)
+   - Obsidian Second Mind (наш собственный)
+3. **Security Audit** — все 7 серверов проверены:
+   - Автор, лицензия, исходный код, звёзды/forks, механизм auth
+   - Проверка на инъекции и supply chain риски
+   - Вердикт: все безопасны ✅
+4. **mcp_config.json обновлён** — 6/7 серверов подключены:
+   - Notion — токен из shared .env
+   - Vercel — remote OAuth
+   - Stripe — sk_test_ ключ из fast-lending
+   - Playwright — без auth (локальный)
+   - Polymarket — ожидает установку Rust toolchain
+5. **Telegram Bot улучшен** — `_fetch_page_content()` теперь извлекает полный текст статей
+6. **Design System** — добавлены правила обязательного использования design.md в GEMINI.md
+7. **Vault логирование** — решение задокументировано в vault
+
+### What Failed / Issues
+- Polymarket MCP требует Rust toolchain (`cargo`), который не установлен
+- Vercel MCP использует OAuth — первый вызов попросит логин в браузере
+
+### Git Commits
+- `1202a12` — feat: add design.md — unified Midnight Luxe design system
+
+### Uncommitted Changes
+- `mcp_config.json` — конфиг IDE (не часть git repo)
+
+### Next Session — What To Do First
+1. Перезагрузить IDE для активации MCP серверов
+2. Протестировать каждый MCP — Notion, Vercel, Stripe, Playwright
+3. Установить Rust + Polymarket MCP
+4. v1.1.0 — scheduled jobs

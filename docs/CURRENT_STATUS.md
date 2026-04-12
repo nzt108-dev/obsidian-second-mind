@@ -1,5 +1,5 @@
 # Obsidian Second Mind — Current Status
-> Last updated: 2026-04-09
+> Last updated: 2026-04-12
 
 ## Version / Build Status
 - **Version**: 1.0.0
@@ -7,6 +7,7 @@
 - **ruff**: All checks passed
 - **pytest**: 18/18 passed
 - **Import chain**: No circular deps
+- **MCP Servers**: 6/7 active (Notion, Vercel, Stripe, Playwright, Figma, Obsidian)
 
 ## What's Done
 
@@ -53,6 +54,15 @@
 - MCP tools: save_session, load_session, get_enhanced_wakeup
 - CLI: `save`, `emergency-save`
 
+### MCP Ecosystem
+- 7 MCP servers integrated (6 active, 1 pending Rust install)
+- Notion — Documentation Hub automation
+- Vercel — Deployment monitoring (OAuth)
+- Stripe — Payment management (test mode)
+- Playwright — E2E browser testing
+- Polymarket — Prediction market data (pending)
+- Security audit: all servers verified ✅
+
 ### Ultimate Brain (v1.0)
 - Complete README with Mermaid architecture diagram
 - Full API reference (23 MCP tools, 14 CLI commands)
@@ -61,10 +71,13 @@
 - Git tag v1.0.0
 
 ## Known Issues / Blockers
-- None critical
-- Whisper/OCR require separate installs (`pip install openai-whisper`, `brew install tesseract`)
+- Polymarket MCP requires Rust toolchain (not installed)
+- Vercel MCP requires OAuth login on first use
+- Whisper/OCR require separate installs
 
 ## What's Next
+- Test all MCP servers after IDE restart
+- Install Rust + Polymarket MCP
 - **v1.1.0**: Scheduled jobs (auto-radar, auto-ingest on schedule)
 - **v1.2.0**: Multi-vault support
 
