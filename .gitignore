@@ -33,3 +33,13 @@ htmlcov/
 # Setup script (dev only)
 setup_all.sh
 comparison.html
+
+# Personal / local only (not for public repo)
+CLAUDE.md
+scratch/
+arch-interactive.html
+data-flow-map.html
+
+# Session logs with personal data
+docs/SESSION_LOG.md
+docs/CURRENT_STATUS.md
