@@ -8,6 +8,8 @@
 [![Version](https://img.shields.io/badge/version-1.2.0-orange.svg)](CHANGELOG.md)
 [![Stars](https://img.shields.io/github/stars/nzt108-dev/obsidian-second-mind?style=social)](https://github.com/nzt108-dev/obsidian-second-mind)
 
+📐 **[Architecture Map →](docs/architecture.md)** · 📋 **[Changelog →](CHANGELOG.md)** · 📦 **[Roadmap](#%EF%B8%8F-roadmap)**
+
 ---
 
 ## 😤 The Problem
