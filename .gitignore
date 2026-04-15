@@ -43,3 +43,8 @@ data-flow-map.html
 # Session logs with personal data
 docs/SESSION_LOG.md
 docs/CURRENT_STATUS.md
+
+# Personal scripts (portfolio sync, personal launchd plists, personal vault setup)
+scripts/sync_to_portfolio.py
+scripts/enrich_vault.sh
+scripts/dev.*.plist
