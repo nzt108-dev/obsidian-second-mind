@@ -116,7 +116,7 @@ class Settings(BaseSettings):
         description="Default project for notes captured without @project prefix.",
     )
 
-    model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env"}
+    model_config = {"env_prefix": "OBSIDIAN_BRIDGE_", "env_file": ".env", "extra": "ignore"}
 
 
 @lru_cache(maxsize=1)

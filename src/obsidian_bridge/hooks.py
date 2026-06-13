@@ -413,32 +413,33 @@ class SessionHooks:
         """
         cache_path = self._memory_dir / "wakeup-cache.json"
 
-        # Load existing cache
-        cache: dict = {}
-        if cache_path.exists():
-            try:
-                cache = json.loads(cache_path.read_text(encoding="utf-8"))
-            except Exception:
-                cache = {}
+        from filelock import FileLock
+        with FileLock(str(cache_path) + ".lock"):
+            # Load existing cache
+            cache: dict = {}
+            if cache_path.exists():
+                try:
+                    cache = json.loads(cache_path.read_text(encoding="utf-8"))
+                except Exception:
+                    cache = {}
 
-        # Update project entry
-        cache[project] = {
-            "last_session": snapshot.timestamp,
-            "summary": snapshot.summary,
-            "branch": snapshot.git_branch,
-            "uncommitted": len(snapshot.uncommitted_changes),
-            "recent_commits": snapshot.recent_commits[:3],
-            "decisions": snapshot.active_decisions[:3],
-            "blockers": snapshot.blockers[:3],
-            "next_steps": snapshot.next_steps[:3],
-        }
+            # Update project entry
+            cache[project] = {
+                "last_session": snapshot.timestamp,
+                "summary": snapshot.summary,
+                "branch": snapshot.git_branch,
+                "uncommitted": len(snapshot.uncommitted_changes),
+                "recent_commits": snapshot.recent_commits[:3],
+                "decisions": snapshot.active_decisions[:3],
+                "blockers": snapshot.blockers[:3],
+                "next_steps": snapshot.next_steps[:3],
+            }
 
-        cache["_updated"] = datetime.now().isoformat()
+            cache["_updated"] = datetime.now().isoformat()
 
-        cache_path.write_text(
-            json.dumps(cache, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+            tmp = cache_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(cache, indent=2, ensure_ascii=False), encoding="utf-8")
+            tmp.replace(cache_path)
         logger.info(f"Wake-up cache updated for {project}")
 
     def _prune_old_snapshots(self, project: str):

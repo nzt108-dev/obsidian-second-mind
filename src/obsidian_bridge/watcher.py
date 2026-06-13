@@ -79,8 +79,7 @@ class VaultEventHandler(FileSystemEventHandler):
             if event_type == "deleted":
                 deleted_count += 1
                 logger.info(f"🗑️  Deleted: {path.name}")
-                # Note: ChromaDB doesn't support single-doc delete easily,
-                # but index.md will no longer list it
+                self.index.delete_note(path)
                 self._log_event("file_deleted", path)
 
             elif path.exists():

@@ -1,9 +1,14 @@
 ---
-description: Full push workflow — commit, push, update docs, log to vault. Use when user writes /push.
+description: Full push workflow — commit, push, update docs, log to vault + portfolio. Use when user writes /push.
 ---
 // turbo-all
 
-# /push — Full Push: Commit + Push + Docs + Vault
+# /push — Всё в одном: Commit + Push + Docs + Vault + Portfolio
+
+## Project Info
+- **Slug**: `obsidian-second-mind`
+- **Title**: `Obsidian Second Mind`
+- **Dir**: `/Users/nzt108/Projects/obsidian-second-mind`
 
 ## Steps
 
@@ -44,36 +49,76 @@ git push
 7. **Log session to Obsidian vault** (MCP tool):
 ```
 create_note(
-  project="<project-slug>",
-  title="Session <YYYY-MM-DD>: <brief description>",
+  project="obsidian-second-mind",
+  title="Session <YYYY-MM-DD>: <краткое описание работы>",
   note_type="note",
-  content="## What was done\n<list>\n\n## Key decisions\n<if any>\n\n## Next steps\n<list>",
+  content="## Что сделано\n<список>\n\n## Ключевые решения\n<если были>\n\n## Что дальше\n<список>",
   tags=["session", "push"]
 )
 ```
-   - If architectural decisions were made → also create a `decision` note
-   - If architecture changed → update `architecture.md` via `create_note()`
+   - Если были архитектурные решения — дополнительно создай `decision` заметку
+   - Если менялась архитектура — обнови `architecture.md` через `create_note()`
 
-8. **Update architecture map in vault** (MCP tool):
-```
-scan_architecture(project="<project-slug>")
-```
-   - Updates `<project>/architecture-map.md` in vault
-   - Contains: modules, dependencies, Mermaid diagram
-   - Runs automatically, no confirmation needed
-
-9. (Optional) Log activity to your portfolio/dashboard:
+8. Update project metadata in portfolio (Mission Control sync):
 ```bash
-# Load your API key from wherever you store it
-# source $HOME/Projects/your-portfolio/.env
-# curl -s -X POST https://your-site.dev/api/agent/activity \
-#   -H "Authorization: Bearer $YOUR_API_KEY" \
-#   -H "Content-Type: application/json" \
-#   -d '{
-#     "projectSlug": "<project-slug>",
-#     "type": "push",
-#     "title": "<commit message>",
-#     "details": "<what was done>"
-#   }'
+source /Users/nzt108/Projects/architect-portfolio/.env
+COMMIT_HASH=$(git rev-parse --short HEAD)
+COMMIT_MSG=$(git log -1 --pretty=%s)
+COMMIT_DATE=$(git log -1 --pretty=%aI)
+curl -s -X POST https://nzt108.dev/api/agent/projects \
+  -H "Authorization: Bearer $PORTFOLIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"slug\": \"obsidian-second-mind\",
+    \"title\": \"Obsidian Second Mind\",
+    \"lastCommitHash\": \"$COMMIT_HASH\",
+    \"lastCommitMsg\": \"$COMMIT_MSG\",
+    \"lastCommitDate\": \"$COMMIT_DATE\"
+  }"
 ```
-   - Skip this step if you don't have a portfolio API
+
+9. Log activity to portfolio:
+```bash
+source /Users/nzt108/Projects/architect-portfolio/.env
+curl -s -X POST https://nzt108.dev/api/agent/activity \
+  -H "Authorization: Bearer $PORTFOLIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"projectSlug\": \"obsidian-second-mind\",
+    \"type\": \"push\",
+    \"title\": \"$COMMIT_MSG\",
+    \"details\": \"<what was done>\"
+  }"
+```
+
+## Skip portfolio if
+- Project is not registered on portfolio (check with user)
+
+10. **Update architecture map in vault** (MCP tool):
+```
+scan_architecture(project="obsidian-second-mind")
+```
+   - Обновляет файл `obsidian-second-mind/architecture-map.md` в vault
+   - Содержит: модули, зависимости, Mermaid диаграмму
+   - Выполняется автоматически, без подтверждения
+
+11. **Upload Data Flow Map to portfolio** (если endpoint доступен):
+```bash
+cd /Users/nzt108/Projects/obsidian-second-mind
+.venv/bin/python -c "
+from scripts.generate_html_maps import analyze_project, generate_html
+from pathlib import Path
+a = analyze_project(Path('/Users/nzt108/Projects/obsidian-second-mind'))
+html = generate_html(a)
+Path('/tmp/dataflow.html').write_text(html)
+"
+
+source /Users/nzt108/Projects/architect-portfolio/.env
+HTML_CONTENT=$(cat /tmp/dataflow.html | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")
+curl -s -X POST https://nzt108.dev/api/agent/dataflow \
+  -H "Authorization: Bearer $PORTFOLIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"projectSlug\": \"obsidian-second-mind\", \"html\": $HTML_CONTENT}"
+```
+   - Будет доступен в /admin/workspaces/obsidian-second-mind/dataflow
+   - Если endpoint ещё не создан — пропустить этот шаг

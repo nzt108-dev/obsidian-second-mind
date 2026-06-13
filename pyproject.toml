@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obsidian-second-mind"
-version = "1.1.0"
+version = "1.2.0"
 description = "Turn your Obsidian vault into a living Second Brain for AI coding agents via MCP"
 readme = "README.md"
 license = "MIT"
@@ -42,6 +42,7 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "httpx>=0.27.0",
     "python-telegram-bot>=21.0",
+    "filelock>=3.12.0",
 ]
 
 [project.optional-dependencies]

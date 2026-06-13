@@ -40,11 +40,11 @@ def scan_project(project_name: str, vault_path: Path):
     arch = scanner.scan()
 
     if not arch.modules:
-        logger.info(f"   ⏭️  No source files found, skipping")
+        logger.info("   ⏭️  No source files found, skipping")
         return
 
     # Save to vault
-    result = scan_and_save(
+    scan_and_save(
         vault_path=vault_path,
         project=project_name,
         project_base_dirs=[str(PROJECTS_DIR)],
@@ -83,7 +83,7 @@ def main():
 
     logger.info(f"\n{'='*50}")
     logger.info(f"🎉 Done! Scanned {scanned}/{len(projects)} projects")
-    logger.info(f"   Architecture maps saved to vault")
+    logger.info("   Architecture maps saved to vault")
 
 
 if __name__ == "__main__":

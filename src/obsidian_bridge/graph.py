@@ -377,13 +377,15 @@ class TemporalKnowledgeGraph:
             self._facts = []
 
     def _persist(self):
-        """Save facts to disk."""
+        """Save facts to disk (atomic write with file lock to prevent race conditions)."""
         import json
-        data = [f.to_dict() for f in self._facts]
-        self._facts_path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        from filelock import FileLock
+        lock = FileLock(str(self._facts_path) + ".lock")
+        with lock:
+            data = [f.to_dict() for f in self._facts]
+            tmp = self._facts_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            tmp.replace(self._facts_path)
 
     @property
     def fact_count(self) -> int:

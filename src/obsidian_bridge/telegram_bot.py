@@ -22,6 +22,7 @@ Behavior:
     - Forwarded messages → tagged as 'forwarded'
     - Photos with caption → caption saved as note
 """
+import asyncio
 import logging
 import os
 import re
@@ -307,6 +308,21 @@ def _append_to_log(vault: Path, operation: str, project: str = "", title: str = 
         f.write(entry)
 
 
+async def _index_note_background(vault: Path, note_path: Path):
+    """Index a single newly created note in the background (non-blocking)."""
+    try:
+        from obsidian_bridge.indexer import VaultIndex
+        from obsidian_bridge.parser import parse_note
+
+        settings = get_settings()
+        note = parse_note(note_path, vault)
+        index = VaultIndex(settings)
+        index.index_notes([note])
+        logger.debug(f"Indexed: {note_path.relative_to(vault)}")
+    except Exception as e:
+        logger.warning(f"Background indexing failed for {note_path.name}: {e}")
+
+
 # ---------------------------------------------------------------------------
 # Bot Handlers
 # ---------------------------------------------------------------------------
@@ -327,9 +343,9 @@ class TelegramCapture:
         self.default_project = default_project
 
     def _is_allowed(self, user_id: int) -> bool:
-        """Check if user is in whitelist. Empty list = allow all."""
+        """Check if user is in whitelist. Empty list = deny all (fail-closed)."""
         if not self.allowed_users:
-            return True
+            return False
         return user_id in self.allowed_users
 
     async def _reply(self, update, text: str):
@@ -389,7 +405,8 @@ class TelegramCapture:
                 await self._reply(update, "🔍 Ничего не найдено.")
                 return
 
-            lines = [f"🔍 <b>Search: {query}</b>\n"]
+            import html as _html
+            lines = [f"🔍 <b>Search: {_html.escape(query)}</b>\n"]
             for i, r in enumerate(results, 1):
                 snippet = r["text"][:200]
                 # Remove markup that could break HTML
@@ -523,6 +540,7 @@ class TelegramCapture:
         )
 
         _append_to_log(self.vault, "telegram_capture", project, title)
+        asyncio.create_task(_index_note_background(self.vault, path))
         rel = path.relative_to(self.vault)
         await self._reply(update, f"✅ → <code>{rel}</code>")
 
@@ -584,13 +602,15 @@ class TelegramCapture:
         )
 
         _append_to_log(self.vault, "telegram_link", project, page_title[:60])
+        asyncio.create_task(_index_note_background(self.vault, path))
         rel = path.relative_to(self.vault)
 
         # Show content preview in reply
         preview = page_content[:150] + "..." if page_content else "⚠️ no content"
+        import html as _html
         await self._reply(update,
             f"🔗 → <code>{rel}</code>\n"
-            f"📰 {page_title}\n"
+            f"📰 {_html.escape(page_title)}\n"
             f"📄 <i>{_escape_md(preview)}</i>"
         )
 
@@ -641,6 +661,7 @@ class TelegramCapture:
             )
 
             _append_to_log(self.vault, "telegram_voice", self.default_project, title)
+            asyncio.create_task(_index_note_background(self.vault, path))
             rel = path.relative_to(self.vault)
             await self._reply(update,
                 f"🎤 → <code>{rel}</code>\n"
@@ -648,7 +669,62 @@ class TelegramCapture:
             )
         except Exception as e:
             logger.error(f"Voice processing failed: {e}")
-            await self._reply(update, f"❌ Ошибка обработки голосового: {e}")
+            import html as _html
+            await self._reply(update, f"❌ Ошибка обработки голосового: {_html.escape(str(e))}")
+
+    async def handle_document(self, update, context):
+        """Handle document files — read text/markdown files and save as note."""
+        if not self._is_allowed(update.effective_user.id):
+            return
+
+        doc = update.message.document
+        if not doc:
+            return
+
+        mime = doc.mime_type or ""
+        name = doc.file_name or "file"
+
+        # Only accept text-based files
+        if not (mime.startswith("text/") or name.endswith((".md", ".txt", ".markdown"))):
+            await self._reply(update, f"⚠️ Неподдерживаемый тип файла: <code>{mime}</code>. Поддерживаются .md, .txt")
+            return
+
+        await self._reply(update, f"📄 Читаю файл <code>{name}</code>...")
+
+        try:
+            file = await context.bot.get_file(doc.file_id)
+            import tempfile
+            tmp = Path(tempfile.mkdtemp()) / name
+            await file.download_to_drive(str(tmp))
+            text = tmp.read_text(encoding="utf-8", errors="replace").strip()
+            tmp.unlink(missing_ok=True)
+            tmp.parent.rmdir()
+        except Exception as e:
+            logger.error(f"Document download failed: {e}")
+            import html as _html
+            await self._reply(update, f"❌ Не удалось скачать файл: {_html.escape(str(e))}")
+            return
+
+        if not text:
+            await self._reply(update, "⚠️ Файл пустой.")
+            return
+
+        caption = update.message.caption or ""
+        project, _ = _extract_project(caption, self.default_project)
+        title = name.rsplit(".", 1)[0] or text[:80].rstrip(".")
+
+        path = _create_note_file(
+            vault=self.vault,
+            project=project,
+            title=title,
+            note_type="note",
+            content=text + f"\n\n> 📄 Imported from file `{name}` via Telegram",
+            tags=["telegram", "import", "inbox"],
+        )
+        _append_to_log(self.vault, "telegram_document", project, title)
+        asyncio.create_task(_index_note_background(self.vault, path))
+        rel = path.relative_to(self.vault)
+        await self._reply(update, f"✅ → <code>{rel}</code>")
 
     async def handle_photo(self, update, context):
         """Handle photos without caption — OCR text extraction."""
@@ -697,6 +773,7 @@ class TelegramCapture:
             )
 
             _append_to_log(self.vault, "telegram_ocr", self.default_project, title)
+            asyncio.create_task(_index_note_background(self.vault, path))
             rel = path.relative_to(self.vault)
             # Show first 200 chars of extracted text
             preview = text[:200].replace("<", "&lt;").replace(">", "&gt;")
@@ -706,7 +783,8 @@ class TelegramCapture:
             )
         except Exception as e:
             logger.error(f"Photo OCR failed: {e}")
-            await self._reply(update, f"❌ Ошибка OCR: {e}")
+            import html as _html
+            await self._reply(update, f"❌ Ошибка OCR: {_html.escape(str(e))}")
 
 
 # ---------------------------------------------------------------------------
@@ -765,6 +843,12 @@ def create_bot(settings=None):
     app.add_handler(MessageHandler(
         filters.PHOTO & ~filters.CAPTION,
         capture.handle_photo,
+    ))
+
+    # Documents (.md, .txt, etc.) → read and save as note
+    app.add_handler(MessageHandler(
+        filters.Document.ALL,
+        capture.handle_document,
     ))
 
     logger.info(f"Bot configured. Vault: {settings.vault_path}")

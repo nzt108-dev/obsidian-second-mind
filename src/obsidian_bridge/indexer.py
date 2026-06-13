@@ -5,6 +5,7 @@ v0.4.0: Hybrid RAG — Vector + BM25 + RRF + Cross-Encoder + Dedup + MMR + Decay
 import logging
 import math
 import re
+from pathlib import Path
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -553,6 +554,22 @@ class VaultIndex:
         self._rebuild_bm25()
 
         return stats
+
+    def delete_note(self, path: Path) -> bool:
+        """Remove all chunks for a deleted note from ChromaDB + rebuild BM25.
+
+        Returns True if any chunks were removed.
+        """
+        existing = self._collection.get(
+            where={"source": str(path)},
+            include=[],
+        )
+        if existing and existing["ids"]:
+            self._collection.delete(ids=existing["ids"])
+            self._rebuild_bm25()
+            logger.info(f"🗑️  Removed {len(existing['ids'])} chunks for {path.name}")
+            return True
+        return False
 
     def search(
         self,

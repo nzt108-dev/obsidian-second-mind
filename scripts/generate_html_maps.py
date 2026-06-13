@@ -505,7 +505,7 @@ def _build_main_flow(a: ProjectAnalysis) -> str:
     has_api = bool(a.api_routes)
     has_bot = any(e["type"] == "bot" for e in a.entry_points)
     has_db = bool(a.db_models)
-    has_ext = bool(a.external_services)
+    bool(a.external_services)  # noqa: F841
 
     # Users / Sources
     lines.append('    User["👤 Пользователь"]')
@@ -615,13 +615,13 @@ def _build_api_flow(a: ProjectAnalysis) -> str:
         lines.append(
             f'    More["... +{len(a.api_routes) - 12} routes"]'
         )
-        lines.append(f'    style More fill:#30363d,color:#8b949e')
+        lines.append('    style More fill:#30363d,color:#8b949e')
 
     if a.db_models:
-        lines.append(f'    DB[("💾 Database")]')
+        lines.append('    DB[("💾 Database")]')
         for i in range(min(12, len(a.api_routes))):
             lines.append(f'    R{i} --> DB')
-        lines.append(f'    style DB fill:#9C27B0,color:#fff')
+        lines.append('    style DB fill:#9C27B0,color:#fff')
 
     lines.append('    style Client fill:#58a6ff,color:#fff')
     return "\n".join(lines)
