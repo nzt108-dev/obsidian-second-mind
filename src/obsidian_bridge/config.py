@@ -102,6 +102,24 @@ class Settings(BaseSettings):
         description="HTTP timeout for Tech Radar and Dependency Watch requests.",
     )
 
+    # --- Backup Settings ---
+    backup_rclone_remote: str = Field(
+        default="",
+        description=(
+            "rclone crypt-remote name for cloud backup, e.g. 'gdrive-crypt:'. "
+            "Required for 'obsidian-bridge backup'. "
+            "Backup is fail-closed: refuses to run if this is empty."
+        ),
+    )
+    backup_dir: str = Field(
+        default="obsidian-backups",
+        description="Remote directory name inside the rclone remote for storing archives.",
+    )
+    backup_keep_daily: int = Field(
+        default=7,
+        description="Number of daily backup archives to keep on the remote.",
+    )
+
     # --- Telegram Bot Settings (v0.6.0) ---
     telegram_bot_token: str = Field(
         default="",

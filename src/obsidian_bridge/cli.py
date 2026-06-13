@@ -355,6 +355,92 @@ def save(ctx, project, summary, next_steps, blockers):
             console.print(f"    → {s}")
 
 
+@cli.command()
+@click.option("--restore", default=None, metavar="DATE",
+              help="Restore vault from backup (YYYY-MM-DD)")
+@click.option("--dry-run", is_flag=True,
+              help="Show what would be backed up without uploading")
+@click.option("--remote", default=None,
+              help="rclone remote name (overrides config)")
+@click.pass_context
+def backup(ctx, restore, dry_run, remote):
+    """Encrypted cloud backup of the vault via rclone crypt."""
+    from obsidian_bridge.backup import BackupConfig, BackupManager
+
+    settings = ctx.obj["settings"]
+
+    cfg = BackupConfig(
+        rclone_remote=remote or settings.backup_rclone_remote,
+        backup_dir=settings.backup_dir,
+        keep_daily=settings.backup_keep_daily,
+    )
+    mgr = BackupManager(vault_path=settings.vault_path, config=cfg)
+
+    # --- RESTORE mode ---
+    if restore:
+        console.print(f"[bold yellow]🔄 Restoring vault from backup: {restore}[/]")
+        try:
+            vault = mgr.restore(restore)
+            console.print(f"[green]✅ Vault restored to {vault}[/]")
+            console.print("[cyan]Run:[/] obsidian-bridge index")
+        except (RuntimeError, FileNotFoundError, ValueError) as exc:
+            console.print(f"[red]❌ Restore failed: {exc}[/]")
+        return
+
+    # --- DRY-RUN mode ---
+    if dry_run:
+        console.print("[bold cyan]🔍 Dry run — listing archive contents...[/]")
+        import tempfile
+        from pathlib import Path as _Path
+        try:
+            mgr.check_rclone()
+        except RuntimeError as exc:
+            console.print(f"[red]❌ {exc}[/]")
+            return
+        with tempfile.TemporaryDirectory(prefix="obsidian-dryrun-") as tmp:
+            try:
+                archive = mgr.create_archive(_Path(tmp))
+                members = mgr.list_archive_contents(archive)
+                size_kb = archive.stat().st_size / 1024
+                console.print(
+                    f"[green]Archive:[/] {archive.name}  "
+                    f"([bold]{size_kb:.1f} KB[/])"
+                )
+                console.print(f"[cyan]{len(members)} files would be uploaded.[/]")
+                for m in members[:30]:
+                    console.print(f"  {m}")
+                if len(members) > 30:
+                    console.print(f"  ... and {len(members) - 30} more")
+            except FileNotFoundError as exc:
+                console.print(f"[red]❌ {exc}[/]")
+        return
+
+    # --- NORMAL backup mode ---
+    console.print("[bold cyan]☁️  Starting vault backup...[/]")
+    console.print(f"Vault: {settings.vault_path}")
+    console.print(f"Remote: {cfg.rclone_remote or '(not set)'}")
+
+    result = mgr.backup()
+
+    if result["success"]:
+        console.print(Panel(
+            f"✅ Backup complete!\n"
+            f"Archive size: [green]{result['archive_size_kb']} KB[/]\n"
+            f"Remote: [cyan]{result['remote_path']}[/]\n"
+            f"Local cache: [dim]{result['local_cache']}[/]",
+            title="Backup",
+            border_style="green",
+        ))
+    else:
+        console.print(Panel(
+            f"❌ Backup failed\n"
+            f"Local cache: [yellow]{result.get('local_cache') or 'none'}[/]\n"
+            f"Error: [red]{result.get('error')}[/]",
+            title="Backup",
+            border_style="red",
+        ))
+
+
 @cli.command("emergency-save")
 @click.argument("project")
 @click.pass_context
