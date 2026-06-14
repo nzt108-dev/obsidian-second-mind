@@ -195,6 +195,84 @@ def add_project(ctx, slug):
     console.print(f"[green]✅ Project '{slug}' created with 4 template notes.[/]")
 
 
+@cli.command("process-inbox")
+@click.option("--apply", "do_apply", is_flag=True,
+              help="Actually route & remove originals (default: dry-run preview)")
+@click.option("--limit", "-n", default=0, help="Max files to process (0 = all)")
+@click.pass_context
+def process_inbox(ctx, do_apply, limit):
+    """Sort accumulated inbox/ notes into projects via the rule-based router.
+
+    Dry-run by default — shows where each note WOULD go. Pass --apply to
+    cascade-ingest matched notes into their project and delete the inbox
+    original. Unmatched notes stay in inbox/.
+    """
+    settings = ctx.obj["settings"]
+    vault = settings.vault_path
+
+    from obsidian_bridge.parser import get_projects, parse_note
+    from obsidian_bridge.inbox_router import classify
+    from obsidian_bridge.ingest import IngestPipeline, IngestSource
+
+    inbox_dir = vault / "inbox"
+    if not inbox_dir.exists():
+        console.print("[yellow]No inbox/ directory.[/]")
+        return
+
+    known = get_projects(vault)
+    index = None
+    if do_apply:
+        try:
+            from obsidian_bridge.indexer import VaultIndex
+            index = VaultIndex(settings)
+        except Exception as e:
+            console.print(f"[yellow]Index unavailable: {e}[/]")
+    pipeline = IngestPipeline(vault_path=vault, index=index)
+
+    table = Table(title="Inbox routing" + ("" if do_apply else " (dry-run)"))
+    table.add_column("File", style="dim", overflow="fold")
+    table.add_column("→ Project", style="cyan")
+    table.add_column("Reason")
+
+    routed = stayed = 0
+    files = sorted(inbox_dir.glob("*.md"))
+    for md in files:
+        # Skip system / generated files.
+        if md.name.startswith("github-radar-") or md.name.startswith("_"):
+            continue
+        note = parse_note(md, vault)
+        if not note:
+            continue
+        decision = classify(note.content, title=note.title, known_projects=known)
+        if decision.project == "inbox":
+            stayed += 1
+            continue
+
+        marker = " 🆕" if decision.is_new_project else ""
+        table.add_row(md.name, decision.project + marker, decision.reason)
+        routed += 1
+
+        if do_apply:
+            source = IngestSource(
+                content=note.content,
+                source_type="note",
+                project=decision.project,
+                title=note.title,
+                tags=["telegram", "inbox", "routed"],
+            )
+            pipeline.ingest(source)
+            md.unlink()  # remove inbox original after successful ingest
+
+        if limit and routed >= limit:
+            break
+
+    console.print(table)
+    verb = "Routed" if do_apply else "Would route"
+    console.print(f"[green]{verb}: {routed}[/] | [dim]Stayed in inbox: {stayed}[/]")
+    if not do_apply and routed:
+        console.print("[yellow]Dry-run. Re-run with --apply to move them.[/]")
+
+
 @cli.command()
 @click.pass_context
 def status(ctx):

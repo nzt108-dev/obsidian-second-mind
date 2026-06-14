@@ -32,6 +32,7 @@ from pathlib import Path
 import httpx
 
 from obsidian_bridge.config import get_settings
+from obsidian_bridge.inbox_router import RouteDecision, classify
 
 logger = logging.getLogger(__name__)
 
@@ -509,6 +510,18 @@ class TelegramCapture:
         # Extract optional @project
         project, content = _extract_project(content, self.default_project)
 
+        # Auto-route to a project when the user didn't specify one explicitly.
+        routed: RouteDecision | None = None
+        if project == self.default_project:
+            try:
+                from obsidian_bridge.parser import get_projects
+                routed = classify(content, known_projects=get_projects(self.vault))
+                if routed.project != self.default_project:
+                    project = routed.project
+            except Exception as e:
+                logger.warning(f"Inbox routing failed, keeping inbox: {e}")
+                routed = None
+
         # Auto-detect URLs
         urls = _extract_urls(content)
 
@@ -517,11 +530,17 @@ class TelegramCapture:
             await self._save_link(update, content, urls, project, is_forwarded, forward_info)
         else:
             # Plain text → save as idea
-            await self._save_idea(update, content, project, is_forwarded, forward_info)
+            await self._save_idea(update, content, project, is_forwarded, forward_info, routed)
 
     async def _save_idea(self, update, text: str, project: str,
-                         is_forwarded: bool, forward_info: str):
-        """Save plain text as an idea note."""
+                         is_forwarded: bool, forward_info: str,
+                         routed: "RouteDecision | None" = None):
+        """Save plain text as an idea note.
+
+        If `routed` points at a real project (not inbox), use the cascade
+        IngestPipeline so the note is spread into memory (cross-references,
+        concept stubs). Otherwise fall back to a plain inbox note.
+        """
         title = text[:80].rstrip(".")
         tags = ["telegram", "inbox"]
         if is_forwarded:
@@ -529,6 +548,22 @@ class TelegramCapture:
 
         source_label = "Forwarded" if is_forwarded else "Captured"
         note_content = f"{text}{forward_info}\n\n> 📱 {source_label} via Telegram"
+
+        # Routed to a real project → full cascade ingest.
+        if routed and routed.project != self.default_project:
+            try:
+                path = self._cascade_ingest(note_content, title, project, tags)
+                _append_to_log(self.vault, "telegram_routed", project, title)
+                rel = path.relative_to(self.vault)
+                new_marker = " 🆕 новый проект" if routed.is_new_project else ""
+                await self._reply(
+                    update,
+                    f"✅ → <code>{rel}</code>\n🧭 {routed.reason}{new_marker}",
+                )
+                return
+            except Exception as e:
+                logger.warning(f"Cascade ingest failed, falling back to inbox: {e}")
+                project = self.default_project
 
         path = _create_note_file(
             vault=self.vault,
@@ -543,6 +578,28 @@ class TelegramCapture:
         asyncio.create_task(_index_note_background(self.vault, path))
         rel = path.relative_to(self.vault)
         await self._reply(update, f"✅ → <code>{rel}</code>")
+
+    def _cascade_ingest(self, content: str, title: str, project: str,
+                        tags: list[str]) -> Path:
+        """Run the cascade IngestPipeline for a routed note. Returns its path."""
+        from obsidian_bridge.ingest import IngestPipeline, IngestSource
+
+        index = None
+        try:
+            from obsidian_bridge.indexer import VaultIndex
+            index = VaultIndex(get_settings())
+        except Exception as e:
+            logger.debug(f"Index unavailable for cascade ingest: {e}")
+
+        source = IngestSource(
+            content=content,
+            source_type="note",
+            project=project,
+            title=title,
+            tags=tags,
+        )
+        report = IngestPipeline(vault_path=self.vault, index=index).ingest(source)
+        return self.vault / report.primary_note
 
     async def _save_link(self, update, text: str, urls: list[str], project: str,
                          is_forwarded: bool, forward_info: str):
