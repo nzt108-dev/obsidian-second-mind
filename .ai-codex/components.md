@@ -4,7 +4,7 @@
 
 | Модуль | Файл | Назначение |
 |--------|------|-----------|
-| MCP Server | `mcp_server.py` | 30 MCP tools (точка входа для Claude Code) |
+| MCP Server | `mcp_server.py` | 18 core MCP tools + 12 опционально за `OSM_ENABLE_EXTRA_TOOLS=1` (temporal KG, radar, scout_tools) — точка входа для Claude Code |
 | CLI | `cli.py` | Click CLI: serve, bot, index, watch, radar, backup, save… |
 | Config | `config.py` | pydantic_settings, env prefix: OBSIDIAN_BRIDGE_ |
 | Models | `models.py` | Note, Chunk dataclasses |

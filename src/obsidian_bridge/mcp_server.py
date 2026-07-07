@@ -38,6 +38,7 @@ v0.4.0: Adaptive Brain.
 """
 import json
 import logging
+import os
 from datetime import date, datetime
 from pathlib import Path
 
@@ -313,20 +314,48 @@ async def read_resource(uri: str) -> str:
 # Tools — dispatch dict
 # ---------------------------------------------------------------------------
 
+def _extra_tools_enabled() -> bool:
+    """Feature flag for the 'extra' tool modules (temporal KG, radar, scout).
+
+    These modules were flagged dead weight by the 2026-07 audit: the
+    knowledge graph has had ~11 facts since April with no active writers,
+    and radar/scout operate on vault/_radar and vault/_inbox folders that
+    stay empty because the GitHub radar already runs as a separate cron job.
+    Registering their tools by default only added noise to tool-selection.
+    Set OSM_ENABLE_EXTRA_TOOLS=1 to bring them back.
+    """
+    return os.environ.get("OSM_ENABLE_EXTRA_TOOLS", "") == "1"
+
+
+def _core_modules():
+    from obsidian_bridge.mcp_tools import notes, maintenance, capture, memory
+    return (notes, maintenance, capture, memory)
+
+
+def _extra_modules():
+    from obsidian_bridge.mcp_tools import temporal, radar, scout_tools
+    return (temporal, radar, scout_tools)
+
+
+def _active_modules():
+    modules = list(_core_modules())
+    if _extra_tools_enabled():
+        modules.extend(_extra_modules())
+    return modules
+
+
 def _build_all_handlers() -> dict:
-    """Collect handlers from all tool modules."""
-    from obsidian_bridge.mcp_tools import notes, maintenance, scout_tools, capture, temporal, memory, radar
+    """Collect handlers from all active tool modules."""
     handlers = {}
-    for mod in (notes, maintenance, scout_tools, capture, temporal, memory, radar):
+    for mod in _active_modules():
         handlers.update(mod.HANDLERS)
     return handlers
 
 
 def _build_all_tools() -> list[Tool]:
-    """Collect Tool definitions from all modules in canonical order."""
-    from obsidian_bridge.mcp_tools import notes, maintenance, scout_tools, capture, temporal, memory, radar
+    """Collect Tool definitions from all active modules in canonical order."""
     result = []
-    for mod in (notes, maintenance, scout_tools, capture, temporal, memory, radar):
+    for mod in _active_modules():
         result.extend(mod.TOOLS)
     return result
 

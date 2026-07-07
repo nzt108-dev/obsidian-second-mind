@@ -195,6 +195,29 @@ def add_project(ctx, slug):
     console.print(f"[green]✅ Project '{slug}' created with 4 template notes.[/]")
 
 
+def _inbox_state_path(settings):
+    """Where we remember the inbox/ file signature between process-inbox runs."""
+    from pathlib import Path
+    return Path(settings.chroma_path).parent / "inbox-router-state.json"
+
+
+def _load_inbox_signature(state_path) -> list:
+    import json
+    try:
+        return json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+
+
+def _save_inbox_signature(state_path, signature: list) -> None:
+    import json
+    try:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(signature), encoding="utf-8")
+    except OSError:
+        pass
+
+
 @cli.command("process-inbox")
 @click.option("--apply", "do_apply", is_flag=True,
               help="Actually route & remove originals (default: dry-run preview)")
@@ -206,6 +229,12 @@ def process_inbox(ctx, do_apply, limit):
     Dry-run by default — shows where each note WOULD go. Pass --apply to
     cascade-ingest matched notes into their project and delete the inbox
     original. Unmatched notes stay in inbox/.
+
+    Performance: this is invoked on a cron-style schedule (LaunchAgent) even
+    when nothing changed in inbox/. To avoid rebuilding the whole BM25 index
+    on every idle tick, we (1) skip entirely if the inbox file list + mtimes
+    are unchanged since the last run, and (2) only construct VaultIndex
+    lazily, the first time a note actually needs to be routed.
     """
     settings = ctx.obj["settings"]
     vault = settings.vault_path
@@ -219,15 +248,26 @@ def process_inbox(ctx, do_apply, limit):
         console.print("[yellow]No inbox/ directory.[/]")
         return
 
+    files = sorted(
+        f for f in inbox_dir.glob("*.md")
+        if not (f.name.startswith("github-radar-") or f.name.startswith("_"))
+    )
+
+    if not files:
+        console.print("[dim]Inbox empty, nothing to do.[/]")
+        return
+
+    state_path = _inbox_state_path(settings)
+    signature = sorted([f.name, f.stat().st_mtime_ns] for f in files)
+    if signature == _load_inbox_signature(state_path):
+        console.print(
+            f"[dim]Inbox unchanged ({len(files)} file(s) since last run), skipping.[/]"
+        )
+        return
+
     known = get_projects(vault)
-    index = None
-    if do_apply:
-        try:
-            from obsidian_bridge.indexer import VaultIndex
-            index = VaultIndex(settings)
-        except Exception as e:
-            console.print(f"[yellow]Index unavailable: {e}[/]")
-    pipeline = IngestPipeline(vault_path=vault, index=index)
+    pipeline = IngestPipeline(vault_path=vault, index=None)
+    index_built = False  # lazily upgraded to a real VaultIndex on first match
 
     table = Table(title="Inbox routing" + ("" if do_apply else " (dry-run)"))
     table.add_column("File", style="dim", overflow="fold")
@@ -235,11 +275,7 @@ def process_inbox(ctx, do_apply, limit):
     table.add_column("Reason")
 
     routed = stayed = 0
-    files = sorted(inbox_dir.glob("*.md"))
     for md in files:
-        # Skip system / generated files.
-        if md.name.startswith("github-radar-") or md.name.startswith("_"):
-            continue
         note = parse_note(md, vault)
         if not note:
             continue
@@ -253,6 +289,15 @@ def process_inbox(ctx, do_apply, limit):
         routed += 1
 
         if do_apply:
+            if not index_built:
+                # Build the (expensive) BM25/vector index only now that we
+                # know at least one note actually needs cascade-ingest.
+                index_built = True
+                try:
+                    from obsidian_bridge.indexer import VaultIndex
+                    pipeline.index = VaultIndex(settings)
+                except Exception as e:
+                    console.print(f"[yellow]Index unavailable: {e}[/]")
             source = IngestSource(
                 content=note.content,
                 source_type="note",
@@ -271,6 +316,16 @@ def process_inbox(ctx, do_apply, limit):
     console.print(f"[green]{verb}: {routed}[/] | [dim]Stayed in inbox: {stayed}[/]")
     if not do_apply and routed:
         console.print("[yellow]Dry-run. Re-run with --apply to move them.[/]")
+
+    # Remember this run's file signature so an idle next tick can bail early.
+    # Recompute from disk: routed files were unlinked, so their mtimes are gone.
+    remaining = sorted(
+        f for f in inbox_dir.glob("*.md")
+        if not (f.name.startswith("github-radar-") or f.name.startswith("_"))
+    )
+    _save_inbox_signature(
+        state_path, sorted([f.name, f.stat().st_mtime_ns] for f in remaining)
+    )
 
 
 @cli.command()

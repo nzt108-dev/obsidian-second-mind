@@ -7,7 +7,7 @@ empty sections, and incomplete frontmatter.
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -22,6 +22,28 @@ CONCEPT_MENTION_PATTERN = re.compile(
     r"|React|TypeScript|Python|Dart|SwiftUI)\b",
     re.IGNORECASE,
 )
+
+
+def _to_date(value) -> Optional[date]:
+    """Normalize a frontmatter date-like value to a plain `date`.
+
+    Frontmatter dates come from YAML and can surface as `date`, `datetime`
+    (e.g. `2026-01-01T10:00:00`), or occasionally a string. Comparing a
+    `datetime` to a `date` raises `TypeError`, so every value must be
+    normalized to `date` before comparison.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.strip()).date()
+        except ValueError:
+            return None
+    return None
 
 
 @dataclass
@@ -188,8 +210,8 @@ class VaultLinter:
         cutoff = date.today() - timedelta(days=self.stale_days)
 
         for note in notes:
-            updated = note.updated or note.created
-            if updated and isinstance(updated, date) and updated < cutoff:
+            updated = _to_date(note.updated or note.created)
+            if updated and updated < cutoff:
                 days_ago = (date.today() - updated).days
                 issues.append(LintIssue(
                     severity="warning",

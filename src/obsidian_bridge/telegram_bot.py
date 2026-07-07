@@ -921,6 +921,13 @@ def run_bot():
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    # httpx logs one INFO line per Telegram long-poll request (~every 10s,
+    # forever) — that's the entire volume of bot-stderr.log at idle (grew to
+    # 37MB with zero rotation from the LaunchAgent). Our own bot events stay
+    # at INFO; silence this one chatty third-party logger to WARNING.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
     logger.info("🤖 Starting Obsidian Second Mind — Telegram Capture Bot")
     logger.info(f"   Vault: {settings.vault_path}")
     logger.info(f"   Default project: {settings.telegram_default_project}")

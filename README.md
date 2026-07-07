@@ -67,7 +67,7 @@ graph TB
         Agent["AI Agent"]
     end
 
-    subgraph MCP["🔌 MCP Server (23 tools)"]
+    subgraph MCP["🔌 MCP Server (18 core tools, +12 opt-in)"]
         Search["🔍 Hybrid Search"]
         Graph["🧬 Knowledge Graph"]
         Memory["🧠 Agent Memory"]
@@ -169,7 +169,20 @@ Now send any message to your bot → it lands in `vault/inbox/` and gets indexed
 
 ---
 
-## 🛠️ MCP Tools Reference (23 tools)
+## 🛠️ MCP Tools Reference (18 core tools, +12 opt-in)
+
+18 tools are registered by default. The Temporal Knowledge Graph, GitHub
+Radar / Auto Architect, and Tech-Radar-adjacent scout tools (12 more) are
+**disabled by default** — a 2026-07 audit found them going unused (the
+temporal KG has had ~11 facts since April with no active writers, and
+`_radar`/`_inbox` sit empty because the GitHub radar already runs as a
+separate cron job) and just adding noise to tool-selection. Set:
+
+```bash
+export OSM_ENABLE_EXTRA_TOOLS=1
+```
+
+before starting the MCP server to register all 30 tools again.
 
 ### 🔍 Core (7 tools)
 
@@ -193,13 +206,23 @@ Now send any message to your bot → it lands in `vault/inbox/` and gets indexed
 | `extract_patterns()` | Analyze decisions for success/failure patterns |
 | `save_insight(project, title, content)` | Save synthesis back to wiki |
 
-### 🤖 Intelligence (3 tools)
+### 🤖 Intelligence (3 tools) — opt-in, `OSM_ENABLE_EXTRA_TOOLS=1`
 
 | Tool | Description |
 |------|-------------|
 | `analyze_sessions(project?)` | Find repeating problems across session logs |
 | `scout_tools(category)` | Scan internet for new relevant tools & MCP servers |
 | `check_dependencies(project)` | Check npm/pip/flutter deps for updates & security |
+
+### 🗺️ GitHub Radar & Auto Architect (5 tools) — opt-in, `OSM_ENABLE_EXTRA_TOOLS=1`
+
+| Tool | Description |
+|------|-------------|
+| `scan_architecture(project)` | Scan source code → Mermaid dependency map |
+| `scan_github_trending(category)` | Scan GitHub trending repos into the vault |
+| `watch_developer(username)` | Track a GitHub developer's new repos |
+| `analyze_repo(url)` | Analyze a single GitHub repo for relevance |
+| `pack_context(project)` | Pack a project's vault notes into one file for LLM context |
 
 ### 📥 Capture (3 tools)
 
@@ -209,7 +232,7 @@ Now send any message to your bot → it lands in `vault/inbox/` and gets indexed
 | `ingest_source(content, project)` | Cascade ingest: 1 source → N wiki updates |
 | `auto_radar_scan(category)` | Tech radar scan with diff tracking + Telegram alerts |
 
-### 🕐 Temporal Brain (4 tools)
+### 🕐 Temporal Brain (4 tools) — opt-in, `OSM_ENABLE_EXTRA_TOOLS=1`
 
 | Tool | Description |
 |------|-------------|
@@ -336,7 +359,7 @@ obsidian-bridge dashboard          # Launch web dashboard (localhost:8765)
 | Metric | Value |
 |--------|-------|
 | Python LOC | ~8,000 |
-| MCP Tools | 23 |
+| MCP Tools | 18 core (+12 opt-in via `OSM_ENABLE_EXTRA_TOOLS=1`) |
 | CLI Commands | 14 |
 | Search latency | < 200ms |
 | Session restore | ~0.1s |
