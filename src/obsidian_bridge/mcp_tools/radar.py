@@ -144,15 +144,18 @@ async def handle_scan_architecture(arguments: dict) -> list[TextContent]:
 
 async def handle_scan_github_trending(arguments: dict) -> list[TextContent]:
     from obsidian_bridge.mcp_server import _get_vault_path, _append_to_log
-    from obsidian_bridge.github_radar import TrendingScanner
+    from obsidian_bridge.github_radar import RadarScanError, TrendingScanner
     vault = _get_vault_path()
     scanner = TrendingScanner()
     topic = arguments.get("topic", "all")
-    repos = scanner.scan(
-        topic=topic,
-        days=arguments.get("days", 7),
-        min_stars=arguments.get("min_stars", 50),
-    )
+    try:
+        repos = scanner.scan(
+            topic=topic,
+            days=arguments.get("days", 7),
+            min_stars=arguments.get("min_stars", 50),
+        )
+    except RadarScanError as e:
+        return [TextContent(type="text", text=f"❌ GitHub API недоступен: {e}")]
     report = scanner.to_markdown(repos, topic)
     _append_to_log(vault, "scan_github_trending", project="_global")
     return [TextContent(type="text", text=report)]

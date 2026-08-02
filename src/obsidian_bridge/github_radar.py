@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -26,6 +27,15 @@ logger = logging.getLogger(__name__)
 
 # GitHub API base
 GITHUB_API = "https://api.github.com"
+
+# Retry policy for the search API: rate limits (403/429) and 5xx are transient.
+# Without retries a transient failure looked identical to "quiet day, 0 repos".
+SCAN_ATTEMPTS = 3
+SCAN_BACKOFF_SECONDS = (5, 20)
+
+
+class RadarScanError(RuntimeError):
+    """GitHub API stayed unreachable after all retries — NOT an empty result."""
 
 # Relevance keywords — repos matching these score higher
 RELEVANT_TOPICS = {
@@ -129,6 +139,29 @@ def _get_token() -> Optional[str]:
     return os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
 
 
+def _get_json_with_retry(url: str, headers: dict, params: dict) -> dict:
+    """GET with backoff. Raises RadarScanError when every attempt failed."""
+    last_error: Optional[Exception] = None
+
+    for attempt in range(SCAN_ATTEMPTS):
+        try:
+            with httpx.Client(timeout=15) as client:
+                resp = client.get(url, headers=headers, params=params)
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPError as e:
+            last_error = e
+            logger.warning(
+                f"GitHub API attempt {attempt + 1}/{SCAN_ATTEMPTS} failed: {e}"
+            )
+            if attempt < SCAN_ATTEMPTS - 1:
+                time.sleep(SCAN_BACKOFF_SECONDS[attempt])
+
+    raise RadarScanError(
+        f"GitHub API unreachable after {SCAN_ATTEMPTS} attempts: {last_error}"
+    )
+
+
 # ─── TrendingScanner ─────────────────────────────────────────────────
 
 class TrendingScanner:
@@ -149,6 +182,9 @@ class TrendingScanner:
 
         Uses /search/repositories with created:>DATE sort:stars
         to find repos gaining traction recently.
+
+        Raises RadarScanError if the API is unreachable — an empty list means
+        "nothing matched", never "the request failed".
         """
         since = (date.today() - timedelta(days=days)).isoformat()
 
@@ -170,14 +206,7 @@ class TrendingScanner:
             "per_page": min(max_results, 30),
         }
 
-        try:
-            with httpx.Client(timeout=15) as client:
-                resp = client.get(url, headers=self.headers, params=params)
-                resp.raise_for_status()
-                data = resp.json()
-        except httpx.HTTPError as e:
-            logger.error(f"GitHub API error: {e}")
-            return []
+        data = _get_json_with_retry(url, self.headers, params)
 
         repos = []
         for item in data.get("items", [])[:max_results]:

@@ -1,15 +1,32 @@
 """Tests for GitHub Radar module."""
+import importlib.util
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import httpx
 
 from obsidian_bridge.github_radar import (
+    SCAN_ATTEMPTS,
     DeveloperWatcher,
+    RadarScanError,
     TrendingRepo,
     TrendingScanner,
     _extract_readme_summary,
     _find_applicable_projects,
+    _get_json_with_retry,
     _score_relevance,
 )
+
+
+def _load_cron_module():
+    """Load scripts/github_radar_cron.py as a module (it is not a package)."""
+    path = Path(__file__).parent.parent / "scripts" / "github_radar_cron.py"
+    spec = importlib.util.spec_from_file_location("github_radar_cron", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class TestScoreRelevance(unittest.TestCase):
@@ -125,6 +142,130 @@ class TestTrendingScanner(unittest.TestCase):
         md = scanner.to_markdown(repos, "ai")
         self.assertIn("test/repo", md)
         self.assertIn("High Relevance", md)
+
+
+class TestScanRetry(unittest.TestCase):
+    """Latch for 2026-08-01: two silent 'Found 0 repos' days were API failures."""
+
+    def _client_mock(self, *, responses):
+        """Build a fake httpx.Client whose .get() replays `responses`."""
+        client = MagicMock()
+        client.__enter__ = MagicMock(return_value=client)
+        client.__exit__ = MagicMock(return_value=False)
+        client.get = MagicMock(side_effect=responses)
+        return MagicMock(return_value=client)
+
+    def test_retries_then_succeeds(self):
+        ok = MagicMock()
+        ok.raise_for_status = MagicMock()
+        ok.json = MagicMock(return_value={"items": []})
+        factory = self._client_mock(
+            responses=[httpx.ConnectTimeout("boom"), ok]
+        )
+        with patch("obsidian_bridge.github_radar.httpx.Client", factory), \
+                patch("obsidian_bridge.github_radar.time.sleep"):
+            data = _get_json_with_retry("https://x", {}, {})
+        self.assertEqual(data, {"items": []})
+
+    def test_raises_after_all_attempts(self):
+        factory = self._client_mock(
+            responses=[httpx.ConnectTimeout("boom")] * SCAN_ATTEMPTS
+        )
+        with patch("obsidian_bridge.github_radar.httpx.Client", factory), \
+                patch("obsidian_bridge.github_radar.time.sleep"):
+            with self.assertRaises(RadarScanError):
+                _get_json_with_retry("https://x", {}, {})
+
+    def test_rate_limit_is_retried_not_swallowed(self):
+        rate_limited = MagicMock()
+        rate_limited.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "403", request=MagicMock(), response=MagicMock()
+            )
+        )
+        factory = self._client_mock(responses=[rate_limited] * SCAN_ATTEMPTS)
+        with patch("obsidian_bridge.github_radar.httpx.Client", factory), \
+                patch("obsidian_bridge.github_radar.time.sleep"):
+            with self.assertRaises(RadarScanError):
+                _get_json_with_retry("https://x", {}, {})
+        self.assertEqual(rate_limited.raise_for_status.call_count, SCAN_ATTEMPTS)
+
+    def test_scan_propagates_error_instead_of_empty_list(self):
+        scanner = TrendingScanner()
+        with patch(
+            "obsidian_bridge.github_radar._get_json_with_retry",
+            side_effect=RadarScanError("down"),
+        ):
+            with self.assertRaises(RadarScanError):
+                scanner.scan(topic="ai")
+
+
+class TestCronFailureHandling(unittest.TestCase):
+    """Cron must tell 'empty day' apart from 'API broken'."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cron = _load_cron_module()
+
+    def test_failed_topic_reported_as_error(self):
+        with patch.object(
+            self.cron.TrendingScanner,
+            "scan",
+            side_effect=self.cron.RadarScanError("down"),
+        ):
+            _md, structured, errors = self.cron.scan_trending(["ai", "mcp"])
+        self.assertEqual(structured, {})
+        self.assertEqual(len(errors), 2)
+        self.assertIn("ai:", errors[0])
+
+    def test_empty_result_is_not_an_error(self):
+        with patch.object(self.cron.TrendingScanner, "scan", return_value=[]):
+            _md, structured, errors = self.cron.scan_trending(["ai"])
+        self.assertEqual(structured, {})
+        self.assertEqual(errors, [])
+
+    def test_failed_profile_check_is_error_not_silence(self):
+        watcher = MagicMock()
+        watcher._load_watchlist.return_value = [{"username": "karpathy"}]
+        watcher.check.return_value = None  # API call failed
+        with patch.object(self.cron, "DeveloperWatcher", return_value=watcher):
+            _md, structured, errors = self.cron.check_watched_devs()
+        self.assertEqual(structured, [])
+        self.assertEqual(len(errors), 1)
+        self.assertIn("karpathy", errors[0])
+
+    def test_run_log_appends_line(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / "logs" / "github-radar.jsonl"
+            with patch.object(self.cron, "RUN_LOG", log):
+                self.cron.write_run_log("failure", findings=0, error="down")
+            entry = json.loads(log.read_text(encoding="utf-8").strip())
+        self.assertEqual(entry["outcome"], "failure")
+        self.assertEqual(entry["escalations"], 1)
+
+    def test_archive_moves_only_old_reports(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            vault = Path(tmp)
+            inbox = vault / "inbox"
+            inbox.mkdir()
+            old = inbox / f"github-radar-{date.today() - timedelta(days=30)}.md"
+            fresh = inbox / f"github-radar-{date.today()}.md"
+            unrelated = inbox / "note.md"
+            for f in (old, fresh, unrelated):
+                f.write_text("x", encoding="utf-8")
+
+            with patch.object(self.cron, "VAULT_PATH", vault), \
+                    patch.object(self.cron, "ARCHIVE_DIR", vault / "_radar" / "archive"):
+                moved = self.cron.archive_old_reports(keep_days=7)
+
+            self.assertEqual(moved, 1)
+            self.assertFalse(old.exists())
+            self.assertTrue(fresh.exists())
+            self.assertTrue(unrelated.exists())
+            self.assertTrue((vault / "_radar" / "archive" / old.name).exists())
 
 
 class TestDeveloperWatcher(unittest.TestCase):
