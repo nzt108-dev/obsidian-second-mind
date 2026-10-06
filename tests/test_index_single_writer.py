@@ -72,6 +72,11 @@ def _writer(url: str, vault: str, writer_id: int) -> None:
 
 def test_parallel_writers_do_not_corrupt_index(chroma_server):
     url, tmp = chroma_server
+    # Embeddings are computed client-side. On a cold cache (CI) three writers
+    # would race to download the same ONNX model and one reads a partial file.
+    from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+    DefaultEmbeddingFunction()(["warm up"])
+
     ctx = mp.get_context("spawn")
     procs = [ctx.Process(target=_writer, args=(url, str(tmp), w)) for w in range(WRITERS)]
     for p in procs:
