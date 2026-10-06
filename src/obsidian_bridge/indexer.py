@@ -494,6 +494,25 @@ class VaultIndex:
         if settings.reranking:
             self._reranker = Reranker(settings.rerank_model)
 
+    def _get_all(self, include: list[str], page: int = 5000) -> dict:
+        """Whole collection, fetched in pages.
+
+        A single get() binds one SQL variable per id, and SQLite caps that at
+        32766: past ~32k chunks the unpaged call fails with "too many SQL
+        variables" (hit 2026-10-05 at 32858 chunks).
+        """
+        out: dict = {"ids": [], **{k: [] for k in include}}
+        offset = 0
+        while True:
+            batch = self._collection.get(include=include, limit=page, offset=offset)
+            ids = batch.get("ids") or []
+            if not ids:
+                return out
+            out["ids"].extend(ids)
+            for k in include:
+                out[k].extend(batch.get(k) or [])
+            offset += len(ids)
+
     def _rebuild_bm25(self):
         """Rebuild BM25 index from current ChromaDB contents."""
         count = self._collection.count()
@@ -501,7 +520,7 @@ class VaultIndex:
             logger.info("ChromaDB empty, skipping BM25 build")
             return
 
-        all_data = self._collection.get(include=["documents", "metadatas"])
+        all_data = self._get_all(["documents", "metadatas"])
         if all_data and all_data["ids"]:
             self._bm25_index.build(
                 doc_ids=all_data["ids"],
@@ -769,7 +788,7 @@ class VaultIndex:
 
     def get_stats(self) -> dict:
         """Get index statistics."""
-        all_meta = self._collection.get(include=["metadatas"])
+        all_meta = self._get_all(["metadatas"])
         projects = set()
         types = set()
         sources = set()
