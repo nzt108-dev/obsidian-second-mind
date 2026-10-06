@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GitHub Radar — Daily cron job.
+"""GitHub Radar - weekly cron job (Mondays): only repos never shown before, top 5.
 
 Scans GitHub trending repos + checks watched developers.
 Saves report to vault and optionally sends to Telegram.
@@ -50,6 +50,11 @@ RUN_LOG = Path.home() / ".claude" / "logs" / "github-radar.jsonl"
 # Reports older than this move out of inbox into the radar archive
 KEEP_IN_INBOX_DAYS = 7
 ARCHIVE_DIR = VAULT_PATH / "_radar" / "archive"
+# 06.10.2026: ежедневные отчёты по ~30 находок копились в inbox непрочитанными.
+# Теперь раз в неделю и только то, чего ещё не показывали, не больше TOP_N.
+SEEN_PATH = VAULT_PATH / "_radar" / "seen.json"
+TOP_N = 5
+MIN_RELEVANCE = 0.5
 
 
 def scan_trending(topics: list[str] | None = None) -> tuple[str, dict, list[str]]:
@@ -147,31 +152,67 @@ def check_watched_devs() -> tuple[str, list[dict], list[str]]:
     return "\n".join(lines), structured, errors
 
 
-def build_telegram_html(
-    repos_by_topic: dict,
-    watched: list[dict],
-    total_found: int,
-) -> str:
-    """Build a short HTML-formatted Telegram message from structured scan results."""
-    import html
-    today = date.today()
-    lines = [
-        f"<b>🔍 GitHub Radar — {today}</b>",
-        f"Found <b>{total_found}</b> repos\n",
-    ]
+def load_seen(path: Path = SEEN_PATH) -> set[str]:
+    """Keys of everything already shown: repo full_name and dev repo url."""
+    import json
+    try:
+        return set(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        return set()
 
+
+def save_seen(seen: set[str], path: Path = SEEN_PATH) -> None:
+    import json
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(sorted(seen), ensure_ascii=False, indent=0), encoding="utf-8")
+
+
+def pick_new(repos_by_topic: dict, seen: set[str], top_n: int = TOP_N) -> list[tuple[str, object]]:
+    """Top-N relevant repos across all topics that were never shown before.
+
+    A repo found under several topics counts once.
+    """
+    picked: dict[str, tuple[str, object]] = {}
     for topic, repos in repos_by_topic.items():
-        high = [r for r in repos if r.relevance_score >= 0.5]
-        if high:
-            lines.append(f"<b>{html.escape(topic.upper())}</b>")
-            for r in high[:3]:
-                name = html.escape(r.full_name)
-                desc = html.escape((r.description or "")[:70])
-                lines.append(
-                    f'⭐ {r.stars:,} <a href="{r.url}">{name}</a>'
-                    + (f" — {desc}" if desc else "")
-                )
-            lines.append("")
+        for r in repos:
+            if r.relevance_score < MIN_RELEVANCE or r.full_name in seen or r.full_name in picked:
+                continue
+            picked[r.full_name] = (topic, r)
+    ranked = sorted(picked.values(), key=lambda tr: (-tr[1].relevance_score, -tr[1].stars))
+    return ranked[:top_n]
+
+
+def build_weekly_report(picked: list[tuple[str, object]], watched: list[dict]) -> str:
+    lines = [
+        "# 🔍 GitHub Radar - новое за неделю",
+        f"> {date.today()} · {len(picked)} репо, {len(watched)} от наблюдаемых разработчиков",
+        "",
+    ]
+    for topic, r in picked:
+        lines.append(
+            f"- ⭐ **{r.stars:,}** [{r.full_name}]({r.url}) [{topic}] "
+            f"- {(r.description or '')[:100]} (rel: {r.relevance_score:.0%})"
+        )
+    if watched:
+        lines += ["", "## 👀 Наблюдаемые разработчики", ""]
+        for d in watched:
+            lines.append(f"- **@{d['username']}**: [{d['repo']}]({d['url']}) ⭐ {d['stars']} ({d['updated']})")
+    return "\n".join(lines) + "\n"
+
+
+def build_telegram_html(picked: list[tuple[str, object]], watched: list[dict]) -> str:
+    """Short HTML Telegram message with only the new picks."""
+    import html
+    lines = [f"<b>🔍 GitHub Radar - новое за неделю ({date.today()})</b>\n"]
+    for topic, r in picked:
+        name = html.escape(r.full_name)
+        desc = html.escape((r.description or "")[:70])
+        lines.append(
+            f'⭐ {r.stars:,} <a href="{r.url}">{name}</a> [{html.escape(topic)}]'
+            + (f" - {desc}" if desc else "")
+        )
+    if picked:
+        lines.append("")
 
     if watched:
         lines.append("<b>👀 Watched Devs</b>")
@@ -305,7 +346,6 @@ def main():
     report_parts = []
     repos_by_topic: dict = {}
     watched_structured: list[dict] = []
-    total_found = 0
     scan_errors: list[str] = []
     watch_errors: list[str] = []
 
@@ -314,7 +354,6 @@ def main():
         topics = [args.topic] if args.topic else TOPICS
         logger.info(f"  Scanning trending: {topics}")
         trending_md, repos_by_topic, scan_errors = scan_trending(topics)
-        total_found = sum(len(v) for v in repos_by_topic.values())
         report_parts.append(trending_md)
 
     # Watched devs
@@ -354,9 +393,17 @@ def main():
         write_run_log("failure", findings=0, error=err_text)
         sys.exit(1)
 
-    # Save to vault
-    path = save_to_vault(report)
-    logger.info(f"  ✅ Saved to {path}")
+    # Only what was never shown, capped: an unread daily wall of links is noise.
+    seen = load_seen()
+    picked = pick_new(repos_by_topic, seen)
+    watched_new = [d for d in watched_structured if d["url"] not in seen]
+    if picked or watched_new:
+        path = save_to_vault(build_weekly_report(picked, watched_new))
+        logger.info(f"  ✅ Saved to {path}")
+        seen |= {r.full_name for _t, r in picked} | {d["url"] for d in watched_new}
+        save_seen(seen)
+    else:
+        logger.info("  Nothing new this week - no report")
 
     # Watchlist-only failures: report is still valid, but the gap must be visible.
     if watch_errors:
@@ -372,19 +419,19 @@ def main():
     if archived:
         logger.info(f"  🗄  Archived {archived} old report(s) → {ARCHIVE_DIR}")
 
-    # Telegram — skip if nothing found (no spam on empty scans)
+    # Telegram - skip if nothing new (no spam on empty weeks)
     if not args.no_telegram:
-        if total_found == 0 and not watched_structured:
-            logger.info("  No findings — skipping Telegram notification")
+        if not picked and not watched_new:
+            logger.info("  Nothing new - skipping Telegram notification")
         else:
-            html_msg = build_telegram_html(repos_by_topic, watched_structured, total_found)
+            html_msg = build_telegram_html(picked, watched_new)
             sent = send_telegram(html_msg)
             if sent:
                 logger.info("  ✅ Telegram notification sent")
 
     write_run_log(
-        "noop" if total_found == 0 and not watched_structured else "success",
-        findings=total_found,
+        "noop" if not picked and not watched_new else "success",
+        findings=len(picked) + len(watched_new),
         error="; ".join(watch_errors),
     )
     logger.info("🎉 Done!")

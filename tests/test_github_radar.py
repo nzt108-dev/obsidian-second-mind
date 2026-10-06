@@ -316,3 +316,39 @@ class TestDeveloperWatcher(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWeeklyNewOnly(unittest.TestCase):
+    """06.10.2026: daily walls of ~30 links piled up unread in inbox."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cron = _load_cron_module()
+
+    def _repo(self, name, rel, stars=100):
+        r = MagicMock()
+        r.full_name, r.relevance_score, r.stars = name, rel, stars
+        r.url, r.description = f"https://github.com/{name}", "d"
+        return r
+
+    def test_pick_new_skips_seen_low_relevance_and_duplicates(self):
+        by_topic = {
+            "ai": [self._repo("a/seen", 0.9), self._repo("a/low", 0.2), self._repo("a/new", 0.7)],
+            "mcp": [self._repo("a/new", 0.7), self._repo("b/best", 0.95)],
+        }
+        picked = self.cron.pick_new(by_topic, seen={"a/seen"})
+        self.assertEqual([r.full_name for _t, r in picked], ["b/best", "a/new"])
+
+    def test_pick_new_caps_at_top_n(self):
+        by_topic = {"ai": [self._repo(f"o/r{i}", 0.5 + i / 100) for i in range(12)]}
+        picked = self.cron.pick_new(by_topic, seen=set(), top_n=5)
+        self.assertEqual(len(picked), 5)
+        self.assertEqual(picked[0][1].full_name, "o/r11")
+
+    def test_seen_roundtrip(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "seen.json"
+            self.assertEqual(self.cron.load_seen(path), set())
+            self.cron.save_seen({"x/y", "https://github.com/u/r"}, path)
+            self.assertEqual(self.cron.load_seen(path), {"x/y", "https://github.com/u/r"})
