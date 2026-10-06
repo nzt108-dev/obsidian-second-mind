@@ -154,8 +154,7 @@ async def handle_get_wakeup_context(arguments: dict) -> list[TextContent]:
 
 
 async def handle_save_insight(arguments: dict) -> list[TextContent]:
-    from obsidian_bridge.mcp_server import _get_vault_path, _get_index, _append_to_log, _regenerate_index
-    from obsidian_bridge.parser import parse_note
+    from obsidian_bridge.mcp_server import _get_vault_path, _reindex_note, _append_to_log, _regenerate_index
     vault = _get_vault_path()
     project = arguments["project"]
     title = arguments["title"]
@@ -201,16 +200,13 @@ async def handle_save_insight(arguments: dict) -> list[TextContent]:
     file_path.write_text(fm_content, encoding="utf-8")
 
     # Re-index
-    index = _get_index()
-    note = parse_note(file_path, vault)
-    if note:
-        index.index_notes([note])
+    index_warning = _reindex_note(file_path, vault)
 
     _append_to_log(vault, "write-back", project, title, note_type, tags,
                    details=f"Query: {source_query}" if source_query else "")
     _regenerate_index(vault)
 
-    return [TextContent(type="text", text=f"✅ Insight saved: {file_path.relative_to(vault)}")]
+    return [TextContent(type="text", text=f"✅ Insight saved: {file_path.relative_to(vault)}{index_warning}")]
 
 
 async def handle_ingest_source(arguments: dict) -> list[TextContent]:

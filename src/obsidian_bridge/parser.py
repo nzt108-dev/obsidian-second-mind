@@ -1,5 +1,6 @@
 """Markdown parser for Obsidian vault notes."""
 import hashlib
+import logging
 import re
 from pathlib import Path
 from typing import Optional
@@ -8,11 +9,14 @@ import frontmatter
 
 from obsidian_bridge.models import Note
 
+logger = logging.getLogger(__name__)
+
 
 # Patterns for Obsidian-specific syntax
 WIKILINK_PATTERN = re.compile(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]")
 WIKILINK_PATTERN_SIMPLE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")  # no alias capture
 EMBED_PATTERN = re.compile(r"!\[\[([^\]]+)\]\]")
+FRONTMATTER_BLOCK = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 TAG_INLINE_PATTERN = re.compile(r"(?:^|\s)#([a-zA-Z0-9_-]+)", re.MULTILINE)
 
 
@@ -67,8 +71,13 @@ def parse_note(file_path: Path, vault_path: Path) -> Optional[Note]:
     except (OSError, UnicodeDecodeError):
         return None
 
-    # Parse frontmatter
-    post = frontmatter.loads(raw_content)
+    # Parse frontmatter. One note with a broken header (an unquoted title with a
+    # colon, 2026-10-05) used to abort the whole vault scan: index it as body only.
+    try:
+        post = frontmatter.loads(raw_content)
+    except Exception as e:
+        logger.warning(f"Broken frontmatter in {file_path.name}, indexing body only: {e}")
+        post = frontmatter.Post(FRONTMATTER_BLOCK.sub("", raw_content, count=1))
     fm = post.metadata
 
     # Extract tags from frontmatter + inline

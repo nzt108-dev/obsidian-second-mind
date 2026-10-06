@@ -241,8 +241,7 @@ async def handle_get_note(arguments: dict) -> list[TextContent]:
 
 
 async def handle_create_note(arguments: dict) -> list[TextContent]:
-    from obsidian_bridge.mcp_server import _get_vault_path, _get_index, _append_to_log, _regenerate_index
-    from obsidian_bridge.parser import parse_note
+    from obsidian_bridge.mcp_server import _get_vault_path, _reindex_note, _append_to_log, _regenerate_index
     from obsidian_bridge.fact_extractor import FactExtractor
     vault = _get_vault_path()
     project = arguments["project"]
@@ -283,16 +282,13 @@ async def handle_create_note(arguments: dict) -> list[TextContent]:
     file_path.write_text(fm_content, encoding="utf-8")
 
     # Re-index this note
-    index = _get_index()
-    note = parse_note(file_path, vault)
-    if note:
-        index.index_notes([note])
+    index_warning = _reindex_note(file_path, vault)
 
     # Auto-log and regenerate index (Karpathy pattern)
     _append_to_log(vault, "create_note", project, title, note_type, tags)
     _regenerate_index(vault)
 
-    result = f"✅ Note created: {file_path.relative_to(vault)}"
+    result = f"✅ Note created: {file_path.relative_to(vault)}{index_warning}"
 
     # v0.8.0: Auto-extract temporal facts from decisions and architecture notes
     if note_type in ("decision", "architecture", "note", "research"):
@@ -313,8 +309,7 @@ async def handle_create_note(arguments: dict) -> list[TextContent]:
 
 
 async def handle_update_note(arguments: dict) -> list[TextContent]:
-    from obsidian_bridge.mcp_server import _get_vault_path, _get_index, _append_to_log, _regenerate_index
-    from obsidian_bridge.parser import parse_note
+    from obsidian_bridge.mcp_server import _get_vault_path, _reindex_note, _append_to_log, _regenerate_index
     vault = _get_vault_path()
     note_path = (vault / arguments["path"]).resolve()
     if not note_path.is_relative_to(vault.resolve()):
@@ -338,16 +333,13 @@ async def handle_update_note(arguments: dict) -> list[TextContent]:
     note_path.write_text(fm_lib.dumps(post), encoding="utf-8")
 
     # Re-index
-    index = _get_index()
-    note = parse_note(note_path, vault)
-    if note:
-        index.index_notes([note])
+    index_warning = _reindex_note(note_path, vault)
 
     # Auto-log
     _append_to_log(vault, "update_note", details=f"Updated: {arguments['path']}")
     _regenerate_index(vault)
 
-    return [TextContent(type="text", text=f"✅ Note updated: {arguments['path']}")]
+    return [TextContent(type="text", text=f"✅ Note updated: {arguments['path']}{index_warning}")]
 
 
 HANDLERS: dict[str, Callable] = {

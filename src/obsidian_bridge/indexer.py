@@ -6,6 +6,7 @@ import logging
 import math
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -474,12 +475,7 @@ class VaultIndex:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.chroma_path = settings.chroma_path
-        self.chroma_path.mkdir(parents=True, exist_ok=True)
-
-        self._client = chromadb.PersistentClient(
-            path=str(self.chroma_path),
-            settings=ChromaSettings(anonymized_telemetry=False),
-        )
+        self._client = self._make_client(settings)
         self._collection = self._client.get_or_create_collection(
             name=self.COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"},
@@ -493,6 +489,37 @@ class VaultIndex:
         self._reranker: Reranker | None = None
         if settings.reranking:
             self._reranker = Reranker(settings.rerank_model)
+
+    @staticmethod
+    def _make_client(settings: Settings):
+        """One process owns the index files: the chroma server.
+
+        Every Claude session starts its own MCP server, plus the inbox router and
+        the CLI. Each embedded PersistentClient keeps its own in-memory HNSW and
+        flushes it over the others' writes; on 2026-10-05 that left an index where
+        even count() segfaulted. So everyone talks to the server over HTTP, and the
+        embedded client is left for tests and one-off runs only.
+        """
+        if not settings.chroma_url:
+            settings.chroma_path.mkdir(parents=True, exist_ok=True)
+            return chromadb.PersistentClient(
+                path=str(settings.chroma_path),
+                settings=ChromaSettings(anonymized_telemetry=False),
+            )
+        url = urlparse(settings.chroma_url)
+        try:
+            return chromadb.HttpClient(
+                host=url.hostname or "127.0.0.1",
+                port=url.port or 8000,
+                settings=ChromaSettings(anonymized_telemetry=False),
+            )
+        except Exception as e:
+            # No silent fallback to the embedded client: that is exactly the
+            # multi-writer setup that corrupts the index.
+            raise RuntimeError(
+                f"Chroma server at {settings.chroma_url} is unreachable ({e}). "
+                "Start it: launchctl kickstart -k gui/$(id -u)/dev.nzt108.chroma-server"
+            ) from e
 
     def _get_all(self, include: list[str], page: int = 5000) -> dict:
         """Whole collection, fetched in pages.

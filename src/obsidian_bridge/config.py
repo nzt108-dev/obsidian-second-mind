@@ -16,6 +16,14 @@ class Settings(BaseSettings):
         default=Path.home() / ".obsidian-bridge" / "chroma",
         description="Path to ChromaDB persistent storage",
     )
+    chroma_url: str = Field(
+        default="http://127.0.0.1:8777",
+        description=(
+            "Chroma server that owns chroma_path (LaunchAgent dev.nzt108.chroma-server). "
+            "Empty = embedded PersistentClient: only for tests and one-off runs, "
+            "never while other processes are open (multi-process writes corrupt the index)"
+        ),
+    )
     host: str = Field(default="127.0.0.1", description="Server host")
     port: int = Field(default=9108, description="Server port")
     chunk_size: int = Field(default=500, description="Chunk size in characters")

@@ -71,6 +71,24 @@ def _get_index() -> VaultIndex:
     return _get_index._instance
 
 
+def _reindex_note(file_path: Path, vault: Path) -> str:
+    """Reindex a note that is already on disk; never fails the tool call.
+
+    The file is the source of truth and is written before this runs. If the index
+    is down, raising here would make the agent retry and create a duplicate note,
+    so report it as a warning instead; the next full reindex picks the note up.
+    """
+    from obsidian_bridge.parser import parse_note
+    try:
+        note = parse_note(file_path, vault)
+        if note:
+            _get_index().index_notes([note])
+        return ""
+    except Exception as e:
+        logger.warning(f"Reindex skipped for {file_path.name}: {e}")
+        return f"\n⚠️ Saved, but the search index was not updated: {e}"
+
+
 def _get_vault_path() -> Path:
     return get_settings().vault_path
 

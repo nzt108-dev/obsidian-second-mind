@@ -9,6 +9,7 @@
 |-----------|-------------|---------|
 | `OBSIDIAN_BRIDGE_VAULT_PATH` | `~/SecondMind` | Путь к Obsidian vault |
 | `OBSIDIAN_BRIDGE_CHROMA_PATH` | `~/.obsidian-bridge/chroma` | ChromaDB persistent storage |
+| `OBSIDIAN_BRIDGE_CHROMA_URL` | `http://127.0.0.1:8777` | Chroma-сервер, единственный владелец `CHROMA_PATH` (LaunchAgent `dev.nzt108.chroma-server`). Пусто = встроенный PersistentClient: только тесты и разовые прогоны при остановленных процессах (ADR-002) |
 | `OBSIDIAN_BRIDGE_HOST` | `127.0.0.1` | MCP server host |
 | `OBSIDIAN_BRIDGE_PORT` | `9108` | MCP server port |
 | `OSM_ENABLE_EXTRA_TOOLS` | `""` (выкл) | `1` регистрирует 12 доп. MCP tools: temporal KG, github radar/auto architect, scout_tools. Не через `pydantic_settings` — читается напрямую в `mcp_server.py` (аудит 2026-07: мёртвый груз по умолчанию) |
