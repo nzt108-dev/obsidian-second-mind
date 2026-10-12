@@ -267,13 +267,14 @@ def _create_note_file(
 
     today = date.today().isoformat()
     tags_yaml = "".join(f'  - "{tag}"\n' for tag in tags)
+    # Empty list as `[]`: a bare `tags:` is YAML null (2026-10-12).
+    tags_yaml = ("\n" + tags_yaml) if tags else " []\n"
 
     fm_content = (
         f"---\n"
         f"project: {project}\n"
         f"type: {note_type}\n"
-        f"tags:\n"
-        f"{tags_yaml}"
+        f"tags:{tags_yaml}"
         f"priority: medium\n"
         f"created: {today}\n"
         f"updated: {today}\n"

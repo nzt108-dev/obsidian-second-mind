@@ -81,9 +81,13 @@ def parse_note(file_path: Path, vault_path: Path) -> Optional[Note]:
     fm = post.metadata
 
     # Extract tags from frontmatter + inline
-    fm_tags = fm.get("tags", [])
+    # A bare `tags:` line is YAML null (create_note wrote one until 2026-10-12):
+    # treat it as no tags instead of crashing the whole vault scan.
+    fm_tags = fm.get("tags") or []
     if isinstance(fm_tags, str):
         fm_tags = [t.strip() for t in fm_tags.split(",")]
+    elif not isinstance(fm_tags, list):
+        fm_tags = [fm_tags]
     inline_tags = _extract_inline_tags(post.content)
     all_tags = list(set(str(t) for t in fm_tags + inline_tags))
 

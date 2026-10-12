@@ -269,8 +269,7 @@ async def handle_create_note(arguments: dict) -> list[TextContent]:
         f"---\n"
         f"project: {project}\n"
         f"type: {note_type}\n"
-        f"tags:\n"
-        + "".join(f"  - \"{tag}\"\n" for tag in tags)
+        + ("tags:\n" + "".join(f"  - \"{tag}\"\n" for tag in tags) if tags else "tags: []\n")
         + f"priority: medium\n"
         f"created: {today}\n"
         f"updated: {today}\n"
